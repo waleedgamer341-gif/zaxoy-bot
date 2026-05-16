@@ -1050,7 +1050,7 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # bot.py — Part 3/3
 
 # ─── //add ────────────────────────────────────────────────────────────
-VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re"}
+VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute"}
 
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -1226,6 +1226,10 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await sticker_cmd(update, ctx)
     elif  text.startswith("//re"):
         await react_cmd(update, ctx)
+    elif text.startswith("//mute"):
+        await mute_cmd(update, ctx)
+    elif text.startswith("//unmute"):
+        await unmute_cmd(update, ctx)
     
   
     else:
@@ -1372,7 +1376,7 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await ctx.bot.restrict_chat_member(
             chat_id=msg.chat_id,
             user_id=target_id,
-            permissions={"can_send_messages": False},
+            Permissions=ChatPermissions(can_send_messages=False),
             until_date=until
         )
         try:
