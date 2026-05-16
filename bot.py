@@ -1013,7 +1013,9 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 },
 
                 json={
-                    "model": "meta-llama/llama-3.1-8b-instruct:free",
+                    "model": "google/gemma-2-9b-it:free",
+
+
 
 
 
