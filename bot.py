@@ -13,8 +13,10 @@ import re
 from telegram import (
     Update,
     InlineKeyboardButton,
-    InlineKeyboardMarkup
+    InlineKeyboardMarkup,
+    ReactionTypeEmoji
 )
+
 
 from telegram.ext import (
     Application,
@@ -1162,7 +1164,8 @@ async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await ctx.bot.set_message_reaction(
             chat_id=msg.chat_id,
             message_id=target.message_id,
-            reaction=emoji
+            reaction=[ReactionTypeEmoji(emoji=emoji)]
+
 
         )
     except Exception as e:
