@@ -1,4 +1,4 @@
-# bot.py — Zaxoy Bot | Part 1/3
+# bot.py — Zaxoy Bot | Part 1/2
 # Replace YOUR_BOT_TOKEN with your actual token
 
 # ─────────────────────────────────────────────────────────────
@@ -14,9 +14,9 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    ReactionTypeEmoji
+    ReactionTypeEmoji,
+    ChatPermissions
 )
-
 
 from telegram.ext import (
     Application,
@@ -433,7 +433,7 @@ async def zaxo_msg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         random.choice(ZAXO_MESSAGES)
     )
-# bot.py — Part 2/3
+    # bot.py — Part 2/4
 
 # ─────────────────────────────────────────────────────────────
 # /choose Game
@@ -848,7 +848,7 @@ async def xo_move(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             reply_markup=make_xo_keyboard(game)
         )
-
+        # bot.py — Part 3/4
 
 # ─────────────────────────────────────────────────────────────
 # //r — Relay / Replace Message
@@ -1047,7 +1047,7 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await thinking.edit_text(
         f"🤖 {answer}"
     )
-# bot.py — Part 3/3
+
 
 # ─── //add ────────────────────────────────────────────────────────────
 VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute"}
@@ -1061,7 +1061,6 @@ async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     parts = msg.text.strip().split(None, 1)
     specific_cmd = parts[1].strip() if len(parts) > 1 else None
 
-    # Resolve target user: from reply or from ID/username in arg
     if target:
         u = target.from_user
         target_id = u.id
@@ -1094,6 +1093,7 @@ async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await msg.reply_text(f"⚠️ Unknown command: {specific_cmd}")
+
 
 # ─── //remove ────────────────────────────────────────────────────────
 async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -1142,6 +1142,8 @@ async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await msg.reply_text(f"⚠️ {target_name} didn't have {specific_cmd}")
+        # bot.py — Part 4/4
+
 async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not has_perm(msg.from_user.id, "//re"):
@@ -1165,8 +1167,6 @@ async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             chat_id=msg.chat_id,
             message_id=target.message_id,
             reaction=[ReactionTypeEmoji(emoji=emoji)]
-
-
         )
     except Exception as e:
         await msg.reply_text(f"⚠️ {str(e)}")
@@ -1198,6 +1198,7 @@ async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         sticker=sticker_id,
         reply_to_message_id=reply_to
     )
+
 # ─── Message router ──────────────────────────────────────────────────
 async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1224,14 +1225,13 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await remove_cmd(update, ctx)
     elif text.startswith("//st"):
         await sticker_cmd(update, ctx)
-    elif  text.startswith("//re"):
+    elif text.startswith("//re"):
         await react_cmd(update, ctx)
     elif text.startswith("//mute"):
         await mute_cmd(update, ctx)
     elif text.startswith("//unmute"):
         await unmute_cmd(update, ctx)
     
-  
     else:
         await zaxo_defense_handler(update, ctx)
         await waleed_protection(update, ctx)
@@ -1246,6 +1246,7 @@ async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await xo_join(update, ctx)
     else:
         await xo_cmd(update, ctx)
+
 import re as re_module
 from datetime import timedelta, datetime, timezone
 
@@ -1305,98 +1306,36 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⛔ You don't have permission 🇵🇱")
         return
 
+    target = msg.reply_to_message
+    if not target:
+        await msg.reply_text("↩️ Reply to a user's message with //mute [duration] to silence them.")
+        return
+
     text_parts = msg.text.strip().split(None, 1)
-    args = text_parts[1].strip() if len(text_parts) > 1 else ""
-
-    target_user = None
-    target_id = None
-    duration_text = args
-
-    # Check if replying to a message
-    if msg.reply_to_message:
-        target_user = msg.reply_to_message.from_user
-        target_id = target_user.id
-        duration_text = args
-
-    # Check if @username or ID provided
-    elif args:
-        parts = args.split(None, 1)
-        identifier = parts[0]
-        duration_text = parts[1] if len(parts) > 1 else ""
-
-        if identifier.startswith("@"):
-            try:
-                member = await ctx.bot.get_chat_member(msg.chat_id, identifier)
-                target_user = member.user
-                target_id = target_user.id
-            except Exception:
-                await msg.reply_text("⚠️ User not found")
-                return
-        elif identifier.lstrip("-").isdigit():
-            target_id = int(identifier)
-            try:
-                member = await ctx.bot.get_chat_member(msg.chat_id, target_id)
-                target_user = member.user
-            except Exception:
-                await msg.reply_text("⚠️ User not found")
-                return
-
-    # If no duration — show remaining mute time
-    if target_id and not duration_text.strip():
-        try:
-            member = await ctx.bot.get_chat_member(msg.chat_id, target_id)
-            until = getattr(member, "until_date", None)
-            if until:
-                now = datetime.now(timezone.utc)
-                remaining = int((until - now).total_seconds())
-                if remaining > 0:
-                    await msg.reply_text(
-                        f"🔇 {target_user.full_name} is muted for {format_duration(remaining)} more. 🇵🇱"
-                    )
-                else:
-                    await msg.reply_text(f"✅ {target_user.full_name} is not muted. 🇵🇱")
-            else:
-                await msg.reply_text(f"✅ {target_user.full_name} is not muted. 🇵🇱")
-        except Exception as e:
-            await msg.reply_text(f"⚠️ {str(e)}")
-        return
-
-    if not target_id:
-        await msg.reply_text("↩️ Reply to a message or provide @username / ID\nExample: //mute @user 1h")
-        return
+    duration_text = text_parts[1].strip() if len(text_parts) > 1 else "10m"
 
     seconds = parse_duration(duration_text)
-    if seconds == 0:
-        await msg.reply_text("❌ Invalid duration. Example: //mute 1h 30m")
-        return
+    if seconds <= 0:
+        seconds = 600  # Default to 10 minutes if parsing fails
 
-    until = datetime.now(timezone.utc) + timedelta(seconds=seconds)
-
+    until_date = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+    
     try:
         await ctx.bot.restrict_chat_member(
             chat_id=msg.chat_id,
-            user_id=target_id,
-            Permissions=ChatPermissions(can_send_messages=False),
-            until_date=until
+            user_id=target.from_user.id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=until_date
         )
-        try:
-            await ctx.bot.delete_message(msg.chat_id, msg.message_id)
-        except Exception:
-            pass
-        duration_str = format_duration(seconds)
-        mute_text = random.choice(MUTE_MESSAGES).format(
-            name=target_user.full_name if target_user else str(target_id),
-            duration=duration_str
+        
+        duration_formatted = format_duration(seconds)
+        alert_msg = random.choice(MUTE_MESSAGES).format(
+            name=target.from_user.full_name,
+            duration=duration_formatted
         )
-        reply_to = msg.reply_to_message.message_id if msg.reply_to_message else None
-        await ctx.bot.send_message(
-            msg.chat_id,
-            mute_text,
-            reply_to_message_id=reply_to
-        )
+        await msg.reply_text(alert_msg)
     except Exception as e:
-        await msg.reply_text(f"⚠️ {str(e)}")
-
+        await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
 
 async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1404,75 +1343,31 @@ async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⛔ You don't have permission 🇵🇱")
         return
 
-    target_user = None
-    target_id = None
-
-    if msg.reply_to_message:
-        target_user = msg.reply_to_message.from_user
-        target_id = target_user.id
-    else:
-        text_parts = msg.text.strip().split(None, 1)
-        if len(text_parts) > 1:
-            identifier = text_parts[1].strip()
-            if identifier.startswith("@"):
-                try:
-                    member = await ctx.bot.get_chat_member(msg.chat_id, identifier)
-                    target_user = member.user
-                    target_id = target_user.id
-                except Exception:
-                    await msg.reply_text("⚠️ User not found")
-                    return
-            elif identifier.lstrip("-").isdigit():
-                target_id = int(identifier)
-                try:
-                    member = await ctx.bot.get_chat_member(msg.chat_id, target_id)
-                    target_user = member.user
-                except Exception:
-                    pass
-
-    if not target_id:
-        await msg.reply_text("↩️ Reply to a message or provide @username / ID")
+    target = msg.reply_to_message
+    if not target:
+        await msg.reply_text("↩️ Reply to a user's message with //unmute to lift their silence.")
         return
 
     try:
-        from telegram import ChatPermissions
         await ctx.bot.restrict_chat_member(
             chat_id=msg.chat_id,
-            user_id=target_id,
-            permissions=ChatPermissions(can_send_messages=True)
+            user_id=target.from_user.id,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_audios=True,
+                can_send_documents=True,
+                can_send_photos=True,
+                can_send_videos=True,
+                can_send_video_notes=True,
+                can_send_voice_notes=True,
+                can_send_polls=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True,
+                can_change_info=True,
+                can_invite_users=True,
+                can_pin_messages=True
+            )
         )
-        try:
-            await ctx.bot.delete_message(msg.chat_id, msg.message_id)
-        except Exception:
-            pass
-        name = target_user.full_name if target_user else str(target_id)
-        await ctx.bot.send_message(
-            msg.chat_id,
-            f"✅ {name} has been unmuted. Welcome back to Zaxo 🇵🇱"
-        )
+        await msg.reply_text(f"🔊 {target.from_user.full_name} has been unmuted. Welcome back to the conversation in Zaxo! 🇵🇱")
     except Exception as e:
-        await msg.reply_text(f"⚠️ {str(e)}")
-
-# ─── Main ────────────────────────────────────────────────────────────
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    # Slash commands
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("on", on_cmd))
-    app.add_handler(CommandHandler("off", off_cmd))
-    app.add_handler(CommandHandler("choose", choose_cmd))
-    app.add_handler(CommandHandler("xo", xo_handler))
-
-    # Inline keyboard callbacks
-    app.add_handler(CallbackQueryHandler(copy_callback, pattern=r"^copy_"))
-    app.add_handler(CallbackQueryHandler(xo_move, pattern=r"^xo_"))
-
-    # All text messages (handles // commands + protections + choose input)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
-
-    print("🤖 Zaxoy Bot is running... 🇵🇱")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+        await msg.reply_text(f"⚠️ Failed to unmute user: {str(e)}")
