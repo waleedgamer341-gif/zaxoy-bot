@@ -1048,7 +1048,8 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # bot.py — Part 3/3
 
 # ─── //add ────────────────────────────────────────────────────────────
-VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st"}
+VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re"}
+
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1139,6 +1140,33 @@ async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await msg.reply_text(f"⚠️ {target_name} didn't have {specific_cmd}")
+async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not has_perm(msg.from_user.id, "//re"):
+        await msg.reply_text("⛔ You don't have permission 🇵🇱")
+        return
+    target = msg.reply_to_message
+    if not target:
+        await msg.reply_text("↩️ Reply to a message with //re [emoji]")
+        return
+    parts = msg.text.strip().split(None, 1)
+    emoji = parts[1].strip() if len(parts) > 1 else None
+    if not emoji:
+        await msg.reply_text("❌ Send: //re [emoji]")
+        return
+    try:
+        await ctx.bot.delete_message(msg.chat_id, msg.message_id)
+    except Exception:
+        pass
+    try:
+        await ctx.bot.set_message_reaction(
+            chat_id=msg.chat_id,
+            message_id=target.message_id,
+            reaction=[{"type": "emoji", "emoji": emoji}]
+        )
+    except Exception as e:
+        await msg.reply_text(f"⚠️ {str(e)}")
+
 async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     
