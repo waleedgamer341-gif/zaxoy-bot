@@ -1220,6 +1220,9 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await remove_cmd(update, ctx)
     elif text.startswith("//st"):
         await sticker_cmd(update, ctx)
+    elif  text.startswith("//re"):
+        await react_cmd(update, ctx)
+    
   
     else:
         await zaxo_defense_handler(update, ctx)
