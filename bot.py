@@ -1194,7 +1194,7 @@ async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     if chat_id in xo_games and xo_games[chat_id]["p2"] is None:
         await xo_join(update, ctx)
-  else:
+    else:
         await xo_cmd(update, ctx)
 
 # ─── Main ────────────────────────────────────────────────────────────
