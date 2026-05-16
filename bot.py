@@ -1010,7 +1010,8 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 },
 
                 json={
-                    "model": "google/gemma-3-9b-it:free",
+                    "model": "mistralai/mistral-7b-instruct:free",
+
 
                     "messages": [
                         {
