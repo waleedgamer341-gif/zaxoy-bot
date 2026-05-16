@@ -1179,7 +1179,7 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await add_cmd(update, ctx)
     elif text.startswith("//remove"):
         await remove_cmd(update, ctx)
-   elif text.startswith("//st"):
+    elif text.startswith("//st"):
         await sticker_cmd(update, ctx)
   
         # Protection handlers (run on every message)
