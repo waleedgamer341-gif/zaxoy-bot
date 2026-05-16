@@ -1182,17 +1182,20 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif text.startswith("//st"):
         await sticker_cmd(update, ctx)
   
-        # Protection handlers (run on every message)
+    else:
         await zaxo_defense_handler(update, ctx)
         await waleed_protection(update, ctx)
-        
+        session = choose_sessions.get(msg.chat_id)
+        if session and session.get("step") == "waiting":
+        await choose_names_handler(update, ctx)
+
         # /choose name collection
         session = choose_sessions.get(msg.chat_id)
         if session and session.get("step") == "waiting":
-            await choose_names_handler(update, ctx)
+        await choose_names_handler(update, ctx)
 
 # ─── /xo handler — start or join ─────────────────────────────────────
-async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+  async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     if chat_id in xo_games and xo_games[chat_id]["p2"] is None:
         await xo_join(update, ctx)
