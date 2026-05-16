@@ -1037,7 +1037,7 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # bot.py — Part 3/3
 
 # ─── //add ────────────────────────────────────────────────────────────
-VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say"}
+VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st"}
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1128,7 +1128,33 @@ async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await msg.reply_text(f"⚠️ {target_name} didn't have {specific_cmd}")
-
+async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    
+    if not has_perm(msg.from_user.id, "//st"):
+        await msg.reply_text("⛔ You don't have permission 🇵🇱")
+        return
+        
+    parts = msg.text.strip().split(None, 1)
+    sticker_id = parts[1].strip() if len(parts) > 1 else None
+    
+    if not sticker_id:
+        await msg.reply_text("❌ Send: //st [file_id]")
+        return
+        
+    target = msg.reply_to_message
+    reply_to = target.message_id if target else None
+    
+    try:
+        await ctx.bot.delete_message(msg.chat_id, msg.message_id)
+    except Exception:
+        pass
+        
+    await ctx.bot.send_sticker(
+        chat_id=msg.chat_id,
+        sticker=sticker_id,
+        reply_to_message_id=reply_to
+    )
 # ─── Message router ──────────────────────────────────────────────────
 async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1153,7 +1179,9 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await add_cmd(update, ctx)
     elif text.startswith("//remove"):
         await remove_cmd(update, ctx)
-    else:
+   elif text.startswith("//st"):
+        await sticker_cmd(update, ctx)
+  
         # Protection handlers (run on every message)
         await zaxo_defense_handler(update, ctx)
         await waleed_protection(update, ctx)
