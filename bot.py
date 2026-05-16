@@ -1013,7 +1013,8 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 },
 
                 json={
-                    "model": "mistralai/mistral-7b-instruct:free",
+                    "model": "meta-llama/llama-3.1-8b-instruct:free",
+
 
 
                     "messages": [
