@@ -1187,8 +1187,8 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await waleed_protection(update, ctx)
         session = choose_sessions.get(msg.chat_id)
         if session and session.get("step") == "waiting":
-        await choose_names_handler(update, ctx)
-   
+            await choose_names_handler(update, ctx)
+
 # ─── /xo handler — start or join ─────────────────────────────────────
   async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
