@@ -1242,6 +1242,212 @@ async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await xo_join(update, ctx)
     else:
         await xo_cmd(update, ctx)
+import re as re_module
+from datetime import timedelta, datetime, timezone
+
+def parse_duration(text: str) -> int:
+    units = {
+        's': 1, 'sec': 1, 'second': 1, 'seconds': 1,
+        'm': 60, 'min': 60, 'minute': 60, 'minutes': 60,
+        'h': 3600, 'hr': 3600, 'hour': 3600, 'hours': 3600,
+        'd': 86400, 'day': 86400, 'days': 86400,
+        'w': 604800, 'week': 604800, 'weeks': 604800,
+        'mo': 2592000, 'month': 2592000, 'months': 2592000,
+        'y': 31536000, 'year': 31536000, 'years': 31536000,
+    }
+    pattern = r'(\d+)\s*([a-zA-Z]+)'
+    matches = re_module.findall(pattern, text.lower())
+    total = 0
+    for amount, unit in matches:
+        if unit in units:
+            total += int(amount) * units[unit]
+    return total
+
+def format_duration(seconds: int) -> str:
+    parts = []
+    if seconds >= 31536000:
+        y = seconds // 31536000; seconds %= 31536000
+        parts.append(f"{y} year{'s' if y > 1 else ''}")
+    if seconds >= 2592000:
+        mo = seconds // 2592000; seconds %= 2592000
+        parts.append(f"{mo} month{'s' if mo > 1 else ''}")
+    if seconds >= 604800:
+        w = seconds // 604800; seconds %= 604800
+        parts.append(f"{w} week{'s' if w > 1 else ''}")
+    if seconds >= 86400:
+        d = seconds // 86400; seconds %= 86400
+        parts.append(f"{d} day{'s' if d > 1 else ''}")
+    if seconds >= 3600:
+        h = seconds // 3600; seconds %= 3600
+        parts.append(f"{h} hour{'s' if h > 1 else ''}")
+    if seconds >= 60:
+        m = seconds // 60; seconds %= 60
+        parts.append(f"{m} minute{'s' if m > 1 else ''}")
+    if seconds > 0:
+        parts.append(f"{seconds} second{'s' if seconds > 1 else ''}")
+    return " and ".join(parts) if parts else "0 seconds"
+
+MUTE_MESSAGES = [
+    "🔇 {name} has been silenced in Zaxo's domain for {duration}. The city speaks — you don't. 🇵🇱",
+    "⛓️ {name} is now muted for {duration}. Zaxo's law has been enforced. 🇵🇱",
+    "🚫 {name} — {duration} of silence. Zaxo does not tolerate noise. 🇵🇱",
+    "🌑 {name} has entered the shadow zone for {duration}. Not a word. 🇵🇱",
+    "⚔️ {name} has been struck silent for {duration} by order of Zaxoy Bot. 🇵🇱",
+]
+
+async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not has_perm(msg.from_user.id, "//mute"):
+        await msg.reply_text("⛔ You don't have permission 🇵🇱")
+        return
+
+    text_parts = msg.text.strip().split(None, 1)
+    args = text_parts[1].strip() if len(text_parts) > 1 else ""
+
+    target_user = None
+    target_id = None
+    duration_text = args
+
+    # Check if replying to a message
+    if msg.reply_to_message:
+        target_user = msg.reply_to_message.from_user
+        target_id = target_user.id
+        duration_text = args
+
+    # Check if @username or ID provided
+    elif args:
+        parts = args.split(None, 1)
+        identifier = parts[0]
+        duration_text = parts[1] if len(parts) > 1 else ""
+
+        if identifier.startswith("@"):
+            try:
+                member = await ctx.bot.get_chat_member(msg.chat_id, identifier)
+                target_user = member.user
+                target_id = target_user.id
+            except Exception:
+                await msg.reply_text("⚠️ User not found")
+                return
+        elif identifier.lstrip("-").isdigit():
+            target_id = int(identifier)
+            try:
+                member = await ctx.bot.get_chat_member(msg.chat_id, target_id)
+                target_user = member.user
+            except Exception:
+                await msg.reply_text("⚠️ User not found")
+                return
+
+    # If no duration — show remaining mute time
+    if target_id and not duration_text.strip():
+        try:
+            member = await ctx.bot.get_chat_member(msg.chat_id, target_id)
+            until = getattr(member, "until_date", None)
+            if until:
+                now = datetime.now(timezone.utc)
+                remaining = int((until - now).total_seconds())
+                if remaining > 0:
+                    await msg.reply_text(
+                        f"🔇 {target_user.full_name} is muted for {format_duration(remaining)} more. 🇵🇱"
+                    )
+                else:
+                    await msg.reply_text(f"✅ {target_user.full_name} is not muted. 🇵🇱")
+            else:
+                await msg.reply_text(f"✅ {target_user.full_name} is not muted. 🇵🇱")
+        except Exception as e:
+            await msg.reply_text(f"⚠️ {str(e)}")
+        return
+
+    if not target_id:
+        await msg.reply_text("↩️ Reply to a message or provide @username / ID\nExample: //mute @user 1h")
+        return
+
+    seconds = parse_duration(duration_text)
+    if seconds == 0:
+        await msg.reply_text("❌ Invalid duration. Example: //mute 1h 30m")
+        return
+
+    until = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+
+    try:
+        await ctx.bot.restrict_chat_member(
+            chat_id=msg.chat_id,
+            user_id=target_id,
+            permissions={"can_send_messages": False},
+            until_date=until
+        )
+        try:
+            await ctx.bot.delete_message(msg.chat_id, msg.message_id)
+        except Exception:
+            pass
+        duration_str = format_duration(seconds)
+        mute_text = random.choice(MUTE_MESSAGES).format(
+            name=target_user.full_name if target_user else str(target_id),
+            duration=duration_str
+        )
+        reply_to = msg.reply_to_message.message_id if msg.reply_to_message else None
+        await ctx.bot.send_message(
+            msg.chat_id,
+            mute_text,
+            reply_to_message_id=reply_to
+        )
+    except Exception as e:
+        await msg.reply_text(f"⚠️ {str(e)}")
+
+
+async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not has_perm(msg.from_user.id, "//mute"):
+        await msg.reply_text("⛔ You don't have permission 🇵🇱")
+        return
+
+    target_user = None
+    target_id = None
+
+    if msg.reply_to_message:
+        target_user = msg.reply_to_message.from_user
+        target_id = target_user.id
+    else:
+        text_parts = msg.text.strip().split(None, 1)
+        if len(text_parts) > 1:
+            identifier = text_parts[1].strip()
+            if identifier.startswith("@"):
+                try:
+                    member = await ctx.bot.get_chat_member(msg.chat_id, identifier)
+                    target_user = member.user
+                    target_id = target_user.id
+                except Exception:
+                    await msg.reply_text("⚠️ User not found")
+                    return
+            elif identifier.lstrip("-").isdigit():
+                target_id = int(identifier)
+                try:
+                    member = await ctx.bot.get_chat_member(msg.chat_id, target_id)
+                    target_user = member.user
+                except Exception:
+                    pass
+
+    if not target_id:
+        await msg.reply_text("↩️ Reply to a message or provide @username / ID")
+        return
+
+    try:
+        from telegram import ChatPermissions
+        await ctx.bot.restrict_chat_member(
+            chat_id=msg.chat_id,
+            user_id=target_id,
+            permissions=ChatPermissions(can_send_messages=True)
+        )
+        try:
+            await ctx.bot.delete_message(msg.chat_id, msg.message_id)
+        except Exception:
+            pass
+        name = target_user.full_name if target_user else str(target_id)
+        await ctx.bot.send_message(
+            msg.chat_id,
+            f"✅ {name} has been unmuted. Welcome back to Zaxo 🇵🇱"
+        )
+    except Exception as e:
+        await msg.reply_text(f"⚠️ {str(e)}")
 
 # ─── Main ────────────────────────────────────────────────────────────
 def main():
