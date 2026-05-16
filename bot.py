@@ -1007,6 +1007,9 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 headers={
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                     "Content-Type": "application/json",
+                    "HTTP-Referer": "https://t.me/",
+                    "X-Title": "ZaxoyBot",
+
                 },
 
                 json={
@@ -1025,8 +1028,11 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
 
         data = resp.json()
+if "choices" in data:
+    answer = data["choices"][0]["message"]["content"]
+else:
+    answer = str(data)
 
-        answer = data["choices"][0]["message"]["content"]
 
     except Exception as e:
 
