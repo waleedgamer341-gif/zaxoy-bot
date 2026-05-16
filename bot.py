@@ -1028,10 +1028,11 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
 
         data = resp.json()
-if "choices" in data:
-    answer = data["choices"][0]["message"]["content"]
-else:
-    answer = str(data)
+        if "choices" in data:
+                answer = data["choices"][0]["message"]["content"]
+            else:
+                answer = str(data)
+
 
 
     except Exception as e:
