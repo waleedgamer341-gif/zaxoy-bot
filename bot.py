@@ -1188,18 +1188,13 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         session = choose_sessions.get(msg.chat_id)
         if session and session.get("step") == "waiting":
         await choose_names_handler(update, ctx)
-
-        # /choose name collection
-        session = choose_sessions.get(msg.chat_id)
-        if session and session.get("step") == "waiting":
-        await choose_names_handler(update, ctx)
-
+   
 # ─── /xo handler — start or join ─────────────────────────────────────
   async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     if chat_id in xo_games and xo_games[chat_id]["p2"] is None:
         await xo_join(update, ctx)
-    else:
+  else:
         await xo_cmd(update, ctx)
 
 # ─── Main ────────────────────────────────────────────────────────────
