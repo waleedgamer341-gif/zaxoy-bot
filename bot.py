@@ -1162,7 +1162,8 @@ async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await ctx.bot.set_message_reaction(
             chat_id=msg.chat_id,
             message_id=target.message_id,
-            reaction=[{"type": "emoji", "emoji": emoji}]
+            reaction=emoji
+
         )
     except Exception as e:
         await msg.reply_text(f"⚠️ {str(e)}")
