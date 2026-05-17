@@ -1595,9 +1595,10 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     await msg.reply_text("⚠️ A warning has been registered for this user.")
 
+
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-    
+
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it into a sticker!")
         return
@@ -1608,57 +1609,74 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        # Standard elegant sticker box
-        img = Image.new("RGBA", (750, 220), (25, 25, 35, 255))
+        # ✅ مربع 512x512 = الحجم الرسمي للستيكر في تيليغرام
+        W, H = 512, 512
+        img = Image.new("RGBA", (W, H), (20, 20, 30, 255))
         draw = ImageDraw.Draw(img)
 
-        # Avatar drawing
+        # ✅ خط ملون على الجانب الأيسر
+        draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
+
+        # Avatar
+        AV = 120
+        AV_X, AV_Y = 28, 30
         try:
             photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
             if photos.total_count > 0:
                 file_id = photos.photos[0][-1].file_id
                 photo_file = await ctx.bot.get_file(file_id)
                 photo_bytes = await photo_file.download_as_bytearray()
-                avatar = Image.open(io.BytesIO(photo_bytes)).resize((110, 110))
-                
-                mask = Image.new("L", (110, 110), 0)
-                mask_draw = ImageDraw.Draw(mask)
-                mask_draw.ellipse((0, 0, 110, 110), fill=255)
-                img.paste(avatar, (35, 55), mask=mask)
+                avatar = Image.open(io.BytesIO(photo_bytes)).convert("RGBA").resize((AV, AV))
+                mask = Image.new("L", (AV, AV), 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, AV, AV), fill=255)
+                img.paste(avatar, (AV_X, AV_Y), mask=mask)
             else:
-                draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
+                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
         except Exception:
-            draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
+            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
 
-        # 🎯 Guaranteed Solid Big Fonts via Courier TrueType
+        # ✅ خطوط كبيرة تناسب 512px
         try:
-            font_name = ImageFont.truetype("Courier-Bold", 36)
-            font_text = ImageFont.truetype("Courier", 26)
+            font_name = ImageFont.truetype("LiberationMono-Bold.ttf", 52)
+            font_text = ImageFont.truetype("LiberationMono-Regular.ttf", 36)
+            font_small = ImageFont.truetype("LiberationMono-Regular.ttf", 28)
         except IOError:
             try:
-                # Fallback to standard generic liberation font if available
-                font_name = ImageFont.truetype("LiberationMono-Bold.ttf", 36)
-                font_text = ImageFont.truetype("LiberationMono-Regular.ttf", 26)
+                font_name = ImageFont.truetype("DejaVuSans-Bold.ttf", 52)
+                font_text = ImageFont.truetype("DejaVuSans.ttf", 36)
+                font_small = ImageFont.truetype("DejaVuSans.ttf", 28)
             except IOError:
-                # Extreme fallback
-                font_name = ImageFont.load_default()
-                font_text = ImageFont.load_default()
+                font_name = font_text = font_small = ImageFont.load_default()
 
-        # Render perfectly scaled big text
-        draw.text((175, 50), f"{user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
-        
-        wrapped_text = text_to_quote[:75] + "..." if len(text_to_quote) > 75 else text_to_quote
-        draw.text((175, 110), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
+        TX = AV_X + AV + 20  # X بداية النص
 
-        # Build sticker file
+        # اسم المستخدم
+        draw.text((TX, 40), user_name[:16], fill=(255, 215, 0, 255), font=font_name)
+
+        # فاصل
+        draw.line((TX, 105, W - 20, 105), fill=(255, 215, 0, 120), width=2)
+
+        # ✅ النص مع wrap صحيح
+        import textwrap
+        lines = textwrap.wrap(text_to_quote, width=18)[:4]
+
+        for i, line in enumerate(lines):
+            draw.text((28, 170 + i * 70), f'"{line}"' if i == 0 else line,
+                      fill=(230, 230, 230, 255), font=font_text)
+
+        # ✅ اسم البوت في الأسفل
+        draw.text((W - 160, H - 40), "@ZaxoyBot", fill=(150, 150, 150, 200), font=font_small)
+
+        # حفظ
         sticker_io = io.BytesIO()
-        img.save(sticker_io, format="WEBP")
+        img.save(sticker_io, format="WEBP", quality=95)
         sticker_io.seek(0)
 
         await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
+
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
