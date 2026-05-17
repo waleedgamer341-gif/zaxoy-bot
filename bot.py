@@ -1623,6 +1623,7 @@ def main():
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^unmute_"))
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
 
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     
