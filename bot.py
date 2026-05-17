@@ -521,7 +521,7 @@ async def choose_names_handler(
 
             try:
                 await loading_msg.edit_text(
-                    f"🎯 choosing someone{d}"
+                    f"🎯 choosing someone to rape{d}"
                 )
 
             except Exception:
