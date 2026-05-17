@@ -1587,6 +1587,41 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
+async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not has_perm(msg.from_user.id, "//warn"):
+        await msg.reply_text("💀 Nice try! You have no permission! 🇵🇱")
+        return
+    if not msg.reply_to_message:
+        await msg.reply_text("⚠️ Reply to a user's message with //warn.")
+        return
+    target = msg.reply_to_message
+    uid = target.from_user.id
+    warn_store[uid] = warn_store.get(uid, 0) + 1
+    count = warn_store[uid]
+    if count >= 3:
+        try:
+            until_date = datetime.now(timezone.utc) + timedelta(seconds=3600)
+            await ctx.bot.restrict_chat_member(
+                chat_id=msg.chat_id,
+                user_id=uid,
+                permissions=ChatPermissions(can_send_messages=False),
+                until_date=until_date
+            )
+            warn_store[uid] = 0
+            await msg.reply_text(f"🔨 {target.from_user.full_name} got 3 warnings and muted 1 hour! 🇵🇱")
+        except Exception as e:
+            await msg.reply_text(f"⚠️ {str(e)}")
+        return
+    await msg.reply_text(
+        f"⚠️ Warning ({count}/3) for {target.from_user.full_name}! 🇵🇱",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("❌ Remove 1 Warn", callback_data=f"remwarn_{uid}"),
+            InlineKeyboardButton("🧹 Reset All", callback_data=f"resetwarn_{uid}")
+        ]])
+    )
+
+
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
