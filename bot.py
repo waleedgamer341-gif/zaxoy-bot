@@ -508,7 +508,7 @@ async def choose_names_handler(
     session["step"] = "choosing"
 
     loading_msg = await msg.reply_text(
-        "🎯 choosing someone"
+        "🎯 choosing someone to rape"
     )
 
     dots = [".", "..", "..."]
@@ -530,7 +530,7 @@ async def choose_names_handler(
     winner = random.choice(names)
 
     await loading_msg.edit_text(
-        f"🏆 **{winner}**",
+        f"/rape **{winner}**",
         parse_mode="Markdown"
     )
 
@@ -538,7 +538,7 @@ async def choose_names_handler(
 
     try:
         await loading_msg.edit_text(
-            f"🏆 **{winner}** 🎉",
+            f"/rape **{winner}** 🔪",
             parse_mode="Markdown"
         )
 
@@ -1060,7 +1060,6 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── //add ────────────────────────────────────────────────────────────
 VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute"}
-
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
