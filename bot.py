@@ -1634,39 +1634,46 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        import textwrap, requests, io, re
+        import textwrap, requests, io, re, os
 
-        # ── حل مشكلة الخطوط والمربعات من داخل الدالة ──────────────────
-        # نبحث عن الخط الأساسي بالنظام ليدعم الحروف العربية والكردية (ڤ، چ) بدون قروشة تحميل
-        def load_system_font(size, bold=False):
-            font_names = [
-                "arial.ttf" if not bold else "arialbd.ttf",  # ويندوز وسيرفرات كثيرة
-                "DejaVuSans.ttf" if not bold else "DejaVuSans-Bold.ttf",  # لينكس / أوبونتو
-                "LiberationSans-Regular.ttf" if not bold else "LiberationSans-Bold.ttf",
-            ]
-            for font_name in font_names:
-                try:
-                    return ImageFont.truetype(font_name, size)
-                except:
-                    continue
-            return ImageFont.load_default(size)
+        # ── حل سحري لمشكلة الخطوط المزخرفة والكردية (تحميل خط Unifont الشامل) ──
+        font_dir = "bot_fonts"
+        os.makedirs(font_dir, exist_ok=True)
+        unifont_path = os.path.join(font_dir, "unifont.ttf")
+        
+        # إذا الخط مو موجود بالسيرفر، البوت بيحمله بثانية واحدة ويحفظه للأبد
+        if not os.path.exists(unifont_path):
+            try:
+                # رابط لخط Unifont الشامل لكل رموز وزخارف وحروف العالم
+                url = "https://github.com/v01d-p01nt/polybar-themes/raw/master/polybar-5/.local/share/fonts/unifont.ttf"
+                r = requests.get(url, timeout=10)
+                if r.status_code == 200:
+                    with open(unifont_path, "wb") as f:
+                        f.write(r.content)
+            except:
+                pass
 
-        font_name = load_system_font(34, bold=True)
-        font_text = load_system_font(26, bold=False)
+        # تشغيل الخط (إذا فشل التحميل لأي سبب يرجع لخط النظام الافتراضي)
+        try:
+            font_name = ImageFont.truetype(unifont_path, 26)
+            font_text = ImageFont.truetype(unifont_path, 22)
+        except:
+            font_name = ImageFont.load_default(26)
+            font_text = ImageFont.load_default(22)
 
         # ── جلب إيموجي من Twemoji ─────────────────────────────
         def get_emoji_img(char, size):
             try:
                 code = "-".join(format(ord(c), 'x') for c in char)
                 url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
-                r = requests.get(url, timeout=4)
+                r = requests.get(url, timeout=3)
                 if r.status_code == 200:
                     return Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
             except:
                 pass
             return None
 
-        # ── رسم نص مع إيموجي ودعم كامل للحروف (ڤ، چ) ──────────────────
+        # ── دالة الرسم المدمج كـ كوبي بيست ────────────────────────────
         def draw_mixed(img, pos, text, font, size, fill):
             x, y = pos
             draw = ImageDraw.Draw(img)
@@ -1679,20 +1686,21 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     em = get_emoji_img(part, size)
                     if em:
                         img.paste(em, (x, y), em)
-                        x += size + 3
+                        x += size + 4
                     else:
                         draw.text((x, y), part, font=font, fill=fill)
                         x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
                 else:
+                    # يرسم النص المزخرف والكردي حرفياً كنسخ ولصق بدون قروشة
                     draw.text((x, y), part, font=font, fill=fill)
                     x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
 
-        # ── الحجم والأسطر ─────────────────────────────────────────────
-        lines = textwrap.wrap(text_to_quote, width=32)[:6]
+        # ── الحجم والأبعاد ─────────────────────────────────────────────
+        lines = textwrap.wrap(text_to_quote, width=34)[:6]
         H = max(200, 150 + len(lines) * 45)
         W = 600
 
-        # ── الخلفية بزوايا مدورة (ثيم تليجرام المظلم الأصلي) ─────────────────
+        # ── تصميم اللوحة (ثيم تليجرام المظلم) ───────────────────────────
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         bg = Image.new("RGBA", (W, H), (23, 33, 43, 255))
 
@@ -1701,11 +1709,9 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         img.paste(bg, (0, 0), mask)
 
         draw = ImageDraw.Draw(img)
-
-        # ── خط جانبي أزرق تليجرامي فخم يعطي إيحاء لقطة محادثة مقتبسة ──────
         draw.rounded_rectangle((0, 0, 6, H), radius=3, fill=(82, 136, 193, 255))
 
-        # ── أفاتار ────────────────────────────────────────────
+        # ── أفاتار الشخص ────────────────────────────────────────────
         AV = 72
         AV_X, AV_Y = 22, 22
         avatar_loaded = False
@@ -1726,29 +1732,27 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not avatar_loaded:
             draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(51, 67, 85, 255))
             first_char = user_name[0] if user_name else "?"
-            draw.text((AV_X+24, AV_Y+16), first_char, font=font_name, fill=(255, 255, 255, 255))
+            draw.text((AV_X+26, AV_Y+18), first_char, font=font_name, fill=(255, 255, 255, 255))
 
-        # ── الاسم بلون أزرق تليجرام الفاتح ───────────────────────────
+        # ── رسم الاسم الكامل والنص بخط الـ Unifont الشامل ─────────────────────
         TX = AV_X + AV + 16
-        draw_mixed(img, (TX, 24), user_name[:24], font_name, 34, (82, 136, 193, 255))
+        draw_mixed(img, (TX, 26), user_name[:24], font_name, 26, (82, 136, 193, 255))
 
-        # ── النص ──────────────────────────────────────────────
         for i, line in enumerate(lines):
-            draw_mixed(img, (TX, 82 + i * 42), line, font_text, 26, (255, 255, 255, 255))
+            draw_mixed(img, (TX, 82 + i * 42), line, font_text, 22, (255, 255, 255, 255))
 
-        # ── حفظ وإرسال كصورة (حيلة الشوت وبدون علامة تحويل) ──────────────────
+        # ── الحفظ والإرسال كـ لقطة شاشة مخفية ────────────────────────────────
         shot_io = io.BytesIO()
         img.save(shot_io, format="PNG")
         shot_io.seek(0)
 
-        # إرسال كـ Photo وليس ملصق لتظهر كلقطة شاشة نظيفة
         await ctx.bot.send_photo(
             chat_id=msg.chat_id, 
             photo=shot_io,
             reply_to_message_id=target_msg.message_id
         )
 
-        # مسح رسالة الأمر //shot عشان يصفى الشات
+        # مسح أمر الـ //shot عشان اللقطة تبين طبيعية
         try:
             await msg.delete()
         except:
@@ -1756,112 +1760,6 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
-
-
-
-
-        def make_font(path, size):
-            try:
-                return ImageFont.truetype(path, size)
-            except:
-                return ImageFont.load_default(size)
-
-        font_name = make_font(text_font_path, 36)
-        font_text = make_font(text_font_reg_path, 28)
-
-        # ── جلب إيموجي من Twemoji ─────────────────────────────
-        def get_emoji_img(char, size):
-            try:
-                code = "-".join(format(ord(c), 'x') for c in char)
-                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
-                r = requests.get(url, timeout=5)
-                if r.status_code == 200:
-                    return Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
-            except:
-                pass
-            return None
-
-        # ── رسم نص مع إيموجي ──────────────────────────────────
-        def draw_mixed(img, pos, text, font, size, fill):
-            x, y = pos
-            draw = ImageDraw.Draw(img)
-            emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF]')
-            parts = re.split(r'([\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF])', text)
-            for part in parts:
-                if not part:
-                    continue
-                if emoji_re.fullmatch(part):
-                    em = get_emoji_img(part, size)
-                    if em:
-                        img.paste(em, (x, y), em)
-                        x += size + 2
-                    else:
-                        draw.text((x, y), part, font=font, fill=fill)
-                        x += font.getbbox(part)[2]
-                else:
-                    draw.text((x, y), part, font=font, fill=fill)
-                    x += font.getbbox(part)[2] - font.getbbox(part)[0]
-
-        # ── الحجم ─────────────────────────────────────────────
-        lines = textwrap.wrap(text_to_quote, width=28)[:5]
-        H = max(180, 140 + len(lines) * 52)
-        W = 512
-
-        # ── الخلفية بزوايا مدورة ──────────────────────────────
-        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        bg = Image.new("RGBA", (W, H), (30, 28, 45, 255))
-
-        mask = Image.new("L", (W, H), 0)
-        from PIL import ImageDraw as ID
-        md = ID.Draw(mask)
-        md.rounded_rectangle((0, 0, W, H), radius=28, fill=255)
-        img.paste(bg, (0, 0), mask)
-
-        draw = ImageDraw.Draw(img)
-
-        # ── خط جانبي وردي ─────────────────────────────────────
-        draw.rounded_rectangle((0, 0, 7, H), radius=4, fill=(220, 80, 100, 255))
-
-        # ── أفاتار ────────────────────────────────────────────
-        AV = 72
-        AV_X, AV_Y = 18, 18
-        try:
-            photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
-            if photos.total_count > 0:
-                file_id = photos.photos[0][-1].file_id
-                photo_file = await ctx.bot.get_file(file_id)
-                photo_bytes = await photo_file.download_as_bytearray()
-                avatar = Image.open(io.BytesIO(photo_bytes)).convert("RGBA").resize((AV, AV))
-                av_mask = Image.new("L", (AV, AV), 0)
-                ImageDraw.Draw(av_mask).ellipse((0, 0, AV, AV), fill=255)
-                img.paste(avatar, (AV_X, AV_Y), av_mask)
-            else:
-                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
-        except:
-            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
-
-        # ── الاسم بلون وردي/برتقالي ───────────────────────────
-        TX = AV_X + AV + 14
-        draw_mixed(img, (TX, 20), user_name[:22], font_name, 36, (220, 100, 80, 255))
-
-        # ── فاصل ──────────────────────────────────────────────
-        draw.line((TX, 75, W - 16, 75), fill=(80, 75, 100, 255), width=1)
-
-        # ── النص ──────────────────────────────────────────────
-        for i, line in enumerate(lines):
-            draw_mixed(img, (18, 88 + i * 52), line, font_text, 28, (220, 220, 230, 255))
-
-        # ── حفظ ───────────────────────────────────────────────
-        sticker_io = io.BytesIO()
-        img.save(sticker_io, format="WEBP", quality=50, method=6)
-        sticker_io.seek(0)
-
-        await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
-
-    except Exception as e:
-        await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
-
-
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
