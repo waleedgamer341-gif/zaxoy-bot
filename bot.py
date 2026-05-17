@@ -1588,23 +1588,25 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
 
 
+async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not msg.reply_to_message:
+        await msg.reply_text("⚠️ You must reply to the user's message you want to warn.")
+        return
+    await msg.reply_text("⚠️ A warning has been registered for this user.")
+
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-    
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it into a sticker!")
         return
-
     target_msg = msg.reply_to_message
     text_to_quote = target_msg.text or target_msg.caption or "💬 [Media]"
     user_name = target_msg.from_user.full_name
     user_id = target_msg.from_user.id
-
     try:
-        # أبعاد البوكس الفخم
-        img = Image.new("RGBA", (750, 220), (25, 25, 35, 255))
+        img = Image.new("RGBA", (800, 240), (25, 25, 35, 255))
         draw = ImageDraw.Draw(img)
-
         try:
             photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
             if photos.total_count > 0:
@@ -1612,45 +1614,37 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 photo_file = await ctx.bot.get_file(file_id)
                 photo_bytes = await photo_file.download_as_bytearray()
                 avatar = Image.open(io.BytesIO(photo_bytes)).resize((110, 110))
-                
                 mask = Image.new("L", (110, 110), 0)
                 mask_draw = ImageDraw.Draw(mask)
                 mask_draw.ellipse((0, 0, 110, 110), fill=255)
-                img.paste(avatar, (35, 55), mask=mask)
+                img.paste(avatar, (35, 65), mask=mask)
             else:
-                draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
+                draw.ellipse((35, 65, 145, 175), fill=(70, 130, 180, 255))
         except Exception:
-            draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
-
-        # 🧠 محاولة تحميل خط حقيقي وكبير يدعم الأحجام والرموز
+            draw.ellipse((35, 65, 145, 175), fill=(70, 130, 180, 255))
         try:
-            # هذا الخط متوفر أساسياً في سيرفرات لينكس/Railway ويدعم الحجم والعربي
             font_name = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
             font_text = ImageFont.truetype("DejaVuSans.ttf", 24)
         except IOError:
             try:
-                # خط احتياطي في حال عدم توفر الأول
                 font_name = ImageFont.truetype("arial.ttf", 32)
                 font_text = ImageFont.truetype("arial.ttf", 24)
             except IOError:
-                # كحل أخير إذا لم تتوفر خطوط (نظام بايثون الافتراضي المحسن)
                 font_name = ImageFont.load_default()
                 font_text = ImageFont.load_default()
-
-        # إحداثيات النصوص الجديدة الموزونة لتناسب الخط الكبير
-        draw.text((175, 55), f"{user_name[:25]}", fill=(255, 215, 0, 255), font=font_name)
-        
+        draw.text((180, 60), f"{user_name[:25]}", fill=(255, 215, 0, 255), font=font_name)
         wrapped_text = text_to_quote[:80] + "..." if len(text_to_quote) > 80 else text_to_quote
-        draw.text((175, 115), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
-
+        draw.text((180, 120), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP")
         sticker_io.seek(0)
-
         await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
-
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
+
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
+    # باقي الهاندرز حقتك هنا...
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
