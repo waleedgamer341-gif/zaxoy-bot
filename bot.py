@@ -1437,33 +1437,78 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
 
 
-async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-    if not has_perm(msg.from_user.id, "//mute"):
-        await msg.reply_text("⛔ You don't have permission 🇵🇱")
+    user_id = msg.from_user.id
+    target = msg.reply_to_message
+
+    # 1. Non-permission user try (Block & Roast)
+    if not has_perm(user_id, "//mute"):
+        await msg.reply_text("💀 HAHAHAHAH NICE TRY! You have no power here 🗣️ 🇵🇱")
         return
 
-    target = msg.reply_to_message
+    # 2. No replied target user
     if not target:
-        await msg.reply_text("↩️ Reply to a user's message with //unmute to lift their silence.")
+        await msg.reply_text("↩️ Reply to a user's message with //mute [duration] to silence them.")
+        return
+
+    target_id = target.from_user.id
+
+    # 3. Self-mute check (Suicide prevention)
+    if user_id == target_id:
+        await msg.reply_text("🧠 Wanna kill yourself? You can't mute yourself, bro! 🇵🇱")
         return
 
     try:
+        # Check target user status
+        chat_member = await ctx.bot.get_chat_member(chat_id=msg.chat_id, user_id=target_id)
+        
+        # 4. Admin try to mute another Admin (Friendly Fire)
+        if chat_member.status in ['administrator', 'creator']:
+            await msg.reply_text("🛡️ Friendly fire... Watch out! He's an admin too! 🇵🇱")
+            return
+
+        # Execute standard mute logic
+        text_parts = msg.text.strip().split(None, 1)
+        duration_text = text_parts[1].strip() if len(text_parts) > 1 else "10m"
+
+        seconds = parse_duration(duration_text)
+        if seconds <= 0:
+            seconds = 600
+
+        until_date = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+        mute_store[target_id] = until_date
+        
         await ctx.bot.restrict_chat_member(
             chat_id=msg.chat_id,
-            user_id=target.from_user.id,
-            permissions=ChatPermissions(
-                can_send_messages=True, can_send_audios=True, can_send_documents=True,
-                can_send_photos=True, can_send_videos=True, can_send_video_notes=True,
-                can_send_voice_notes=True, can_send_polls=True, can_send_other_messages=True,
-                can_add_web_page_previews=True, can_change_info=True, can_invite_users=True,
-                can_pin_messages=True
-            )
+            user_id=target_id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=until_date
         )
-        mute_store.pop(target.from_user.id, None)
-        await msg.reply_text(f"🔊 {target.from_user.full_name} has been unmuted. Welcome back to the conversation in Zaxo! 🇵🇱")
+        
+        duration_formatted = format_duration(seconds)
+        msg_idx = random.randint(0, len(MUTE_MESSAGES) - 1)
+        alert_msg = MUTE_MESSAGES[msg_idx].format(
+            name=target.from_user.full_name,
+            duration=duration_formatted
+        )
+        
+        sent = await msg.reply_text(
+            alert_msg,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target_id}")]
+            ])
+        )
+        mute_message_map[sent.message_id] = target_id
+        mute_msg_index_map[sent.message_id] = msg_idx
+        
+        asyncio.create_task(auto_unmute_task(
+            msg.chat_id, target_id, sent.message_id, 
+            target.from_user.full_name, msg_idx, seconds, ctx
+        ))
+
     except Exception as e:
-        await msg.reply_text(f"⚠️ Failed to unmute user: {str(e)}")
+        await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
 
 
 async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
