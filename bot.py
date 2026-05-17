@@ -45,6 +45,7 @@ logging.basicConfig(level=logging.INFO)
 # ─────────────────────────────────────────────────────────────
 mute_store = {}
 mute_message_map = {}
+warn_store = {}
 
 MUTE_MESSAGES = [
     "🔇 {name} has been silenced in Zaxo's domain for {duration}. The city speaks — you don't. 🇵🇱",
@@ -1549,6 +1550,66 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await query.answer(str(e), show_alert=True)
 
+async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    user_id = msg.from_user.id
+    target = msg.reply_to_message
+
+    if not has_perm(user_id, "//warn"):
+        await msg.reply_text("💀 HAHAHAHAH NICE TRY! You can't warn anyone here 🗣️ 🇵🇱")
+        return
+
+    if not target:
+        await msg.reply_text("↩️ Reply to a user's message with //warn to penalize them.")
+        return
+
+    target_id = target.from_user.id
+
+    if user_id == target_id:
+        await msg.reply_text("🧠 Trying to warn yourself? Go get some sleep, bro! 🇵🇱")
+        return
+
+    try:
+        chat_member = await ctx.bot.get_chat_member(chat_id=msg.chat_id, user_id=target_id)
+        if chat_member.status in ['administrator', 'creator']:
+            await msg.reply_text("🛡️ Relax admin! You can't warn a fellow protector of Zaxoy! 🇵🇱")
+            return
+
+        current_warns = warn_store.get(target_id, 0) + 1
+        warn_store[target_id] = current_warns
+
+        if current_warns >= 3:
+            warn_store[target_id] = 0
+            until_date = datetime.now(timezone.utc) + timedelta(hours=24)
+            mute_store[target_id] = until_date
+            
+            await ctx.bot.restrict_chat_member(
+                chat_id=msg.chat_id,
+                user_id=target_id,
+                permissions=ChatPermissions(can_send_messages=False),
+                until_date=until_date
+            )
+            
+            await msg.reply_text(
+                f"💥 Game over {target.from_user.full_name}! You reached (3/3) warnings! Enjoy your 24 hours of silence by order of Zaxoy! 🇵🇱",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target_id}")]
+                ])
+            )
+        else:
+            await msg.reply_text(
+                f"⚠️ Watch your step {target.from_user.full_name}! Warning ({current_warns}/3) has been issued! Keep it clean or get hammered! 🇵🇱",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("❌ Remove 1 Warn", callback_data=f"remwarn_{target_id}"),
+                        InlineKeyboardButton("🧹 Reset All", callback_data=f"resetwarn_{target_id}")
+                    ]
+                ])
+            )
+
+    except Exception as e:
+        await msg.reply_text(f"⚠️ Failed to process warning: {str(e)}")
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1564,6 +1625,7 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
+    app.add_handler(CommandHandler("warn", warn_cmd))
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
