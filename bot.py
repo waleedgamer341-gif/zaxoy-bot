@@ -1228,7 +1228,7 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif text.startswith("//re"):
         await react_cmd(update, ctx)
     elif text.startswith("//mute ?"):
-    await mute_status_cmd(update, ctx)
+        await mute_status_cmd(update, ctx)
     elif text.startswith("//mute"):
         await mute_cmd(update, ctx)
     elif text.startswith("//unmute"):
