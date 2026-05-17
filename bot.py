@@ -1622,9 +1622,8 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it!")
         return
@@ -1637,30 +1636,17 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         import textwrap, io, re, os, requests
 
+        # إنشاء مجلد للخط وتحميل خط Unifont الشامل للزخارف
         font_dir = "bot_fonts_fixed"
         os.makedirs(font_dir, exist_ok=True)
+        font_path = os.path.join(font_dir, "unifont.ttf")
 
-        font_path = os.path.join(font_dir, "NotoSans.ttf")
-        font_arabic_path = os.path.join(font_dir, "NotoSansArabic.ttf")
-
-        # تحميل خط عام
         if not os.path.exists(font_path):
             try:
-                url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+                url = "https://github.com/v01d-p01nt/polybar-themes/raw/master/polybar-5/.local/share/fonts/unifont.ttf"
                 r = requests.get(url, timeout=15)
                 if r.status_code == 200:
                     with open(font_path, "wb") as f:
-                        f.write(r.content)
-            except:
-                pass
-
-        # تحميل خط عربي
-        if not os.path.exists(font_arabic_path):
-            try:
-                url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf"
-                r = requests.get(url, timeout=15)
-                if r.status_code == 200:
-                    with open(font_arabic_path, "wb") as f:
                         f.write(r.content)
             except:
                 pass
@@ -1672,12 +1658,7 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             font_name = ImageFont.load_default(24)
             font_text = ImageFont.load_default(20)
 
-        try:
-            font_arabic = ImageFont.truetype(font_arabic_path, 22)
-        except:
-            font_arabic = font_text
-
-        # دالة جلب الإيموجي من الإنترنت
+        # دالة سحب الإيموجي من الإنترنت
         def get_emoji_img(char, size):
             try:
                 code = "-".join(format(ord(c), 'x') for c in char)
@@ -1689,14 +1670,11 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 pass
             return None
 
-        # دالة الرسم مع دعم العربي والإيموجي
+        # دالة الرسم الذكي لتفكيك الحروف والزخارف منعاً للمربعات
         def draw_clean(img, pos, text, font, size, fill):
             x, y = pos
             draw = ImageDraw.Draw(img)
-
-            arabic_re = re.compile(r'[\u0600-\u06FF\u0750-\u077F]+')
             emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF\U0001F1E0-\U0001F1FF]')
-
             parts = re.split(r'([\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF\U0001F1E0-\U0001F1FF])', text)
 
             for part in parts:
@@ -1710,14 +1688,12 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     else:
                         draw.text((x, y), part, font=font, fill=fill)
                         x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
-                elif arabic_re.search(part):
-                    draw.text((x, y), part, font=font_arabic, fill=fill)
-                    x += font_arabic.getbbox(part)[2] - font_arabic.getbbox(part)[0] + 2
                 else:
-                    draw.text((x, y), part, font=font, fill=fill)
-                    x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
+                    for char in part:
+                        draw.text((x, y), char, font=font, fill=fill)
+                        x += font.getbbox(char)[2] - font.getbbox(char)[0] + 1
 
-        # الأبعاد
+        # أبعاد الصورة الخلفية
         lines = textwrap.wrap(text_to_quote, width=34)[:6]
         H = max(200, 150 + len(lines) * 45)
         W = 600
@@ -1732,7 +1708,7 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         draw = ImageDraw.Draw(img)
         draw.rounded_rectangle((0, 0, 6, H), radius=3, fill=(82, 136, 193, 255))
 
-        # جلب الأفاتار
+        # جلب الصورة الشخصية (الأفاتار)
         AV = 72
         AV_X, AV_Y = 22, 22
         avatar_loaded = False
@@ -1755,15 +1731,11 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             first_char = user_name[0] if user_name else "?"
             draw.text((AV_X+26, AV_Y+18), first_char, font=font_name, fill=(255, 255, 255, 255))
 
-        # طباعة الاسم
+        # رسم الاسم المطور المصلح بدون مربعات
         TX = AV_X + AV + 16
-        arabic_re_check = re.compile(r'[\u0600-\u06FF\u0750-\u077F]+')
-        if arabic_re_check.search(user_name):
-            draw.text((TX, 26), user_name[:24], font=font_arabic, fill=(82, 136, 193, 255))
-        else:
-            draw.text((TX, 26), user_name[:24], font=font_name, fill=(82, 136, 193, 255))
+        draw_clean(img, (TX, 26), user_name[:24], font_name, 26, (82, 136, 193, 255))
 
-        # طباعة النص
+        # رسم نص الرسالة المقتبسة
         for i, line in enumerate(lines):
             draw_clean(img, (TX, 82 + i * 42), line, font_text, 22, (255, 255, 255, 255))
 
@@ -1772,12 +1744,10 @@ async def final_shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         shot_io.seek(0)
 
         await ctx.bot.send_photo(chat_id=msg.chat_id, photo=shot_io, reply_to_message_id=target_msg.message_id)
-
         try:
             await msg.delete()
         except:
             pass
-
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot failed: {str(e)}")
 
