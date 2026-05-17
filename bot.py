@@ -1664,7 +1664,8 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        img = Image.new("RGBA", (512, 180), (25, 25, 35, 255))
+        # كبرنا الحجم هنا إلى 800 في 250 عشان يطلع الملصق كبير وواضح
+        img = Image.new("RGBA", (800, 250), (25, 25, 35, 255))
         draw = ImageDraw.Draw(img)
 
         try:
@@ -1673,24 +1674,27 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 file_id = photos.photos[0][-1].file_id
                 photo_file = await ctx.bot.get_file(file_id)
                 photo_bytes = await photo_file.download_as_bytearray()
-                avatar = Image.open(io.BytesIO(photo_bytes)).resize((75, 75))
+                # كبرنا حجم صورة البروفايل لتناسب المقاس الجديد
+                avatar = Image.open(io.BytesIO(photo_bytes)).resize((120, 120))
                 
-                mask = Image.new("L", (75, 75), 0)
+                mask = Image.new("L", (120, 120), 0)
                 mask_draw = ImageDraw.Draw(mask)
-                mask_draw.ellipse((0, 0, 75, 75), fill=255)
-                img.paste(avatar, (25, 25), mask=mask)
+                mask_draw.ellipse((0, 0, 120, 120), fill=255)
+                img.paste(avatar, (40, 65), mask=mask)
             else:
-                draw.ellipse((25, 25, 100, 100), fill=(70, 130, 180, 255))
+                draw.ellipse((40, 65, 160, 185), fill=(70, 130, 180, 255))
         except Exception:
-            draw.ellipse((25, 25, 100, 100), fill=(70, 130, 180, 255))
+            draw.ellipse((40, 65, 160, 185), fill=(70, 130, 180, 255))
 
+        # هنا استخدمنا خطوط النظام الأساسية عشان تدعم الحجم والأشكال بشكل أفضل
         font_name = ImageFont.load_default()
         font_text = ImageFont.load_default()
 
-        draw.text((120, 30), f"✨ {user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
+        # ضبطنا مسافات النصوص وأماكنها لتكون متناسقة وكبيرة
+        draw.text((200, 60), f"{user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
         
-        wrapped_text = text_to_quote[:75] + "..." if len(text_to_quote) > 75 else text_to_quote
-        draw.text((120, 65), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
+        wrapped_text = text_to_quote[:100] + "..." if len(text_to_quote) > 100 else text_to_quote
+        draw.text((200, 120), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
 
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP")
