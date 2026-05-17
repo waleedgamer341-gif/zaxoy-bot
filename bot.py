@@ -13,7 +13,7 @@ import asyncio
 import re
 from datetime import timedelta, datetime, timezone
 
-from telegram import (
+from telegram import ( 
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -1639,9 +1639,10 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         def load_font(size, bold=False):
             url = (
-                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf"
-                if bold else
-                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf"
+                 if bold else
+                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf"
+
             )
             try:
                 r = requests.get(url, timeout=15)
@@ -1655,7 +1656,8 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         def get_emoji_image(emoji_char, size):
             try:
                 code = format(ord(emoji_char), 'x')
-                url = f"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/{code}.png"
+                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
+
                 r = requests.get(url, timeout=5)
                 em = Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
                 return em
