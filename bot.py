@@ -513,11 +513,11 @@ async def choose_names_handler(
 
     dots = [".", "..", "..."]
 
-    for _ in range(6):
+    for _ in range(4):
 
         for d in dots:
 
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(0.41)
 
             try:
                 await loading_msg.edit_text(
