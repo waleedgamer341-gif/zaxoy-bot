@@ -1059,7 +1059,7 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── //add ────────────────────────────────────────────────────────────
-VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute"}
+VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute", "//unmute"}
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
