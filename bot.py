@@ -1649,11 +1649,12 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 return None
 
         text_font_path = download_font(
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf"
-        )
-        text_font_reg_path = download_font(
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf"
-        )
+    "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf"
+)
+text_font_reg_path = download_font(
+    "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Regular.ttf"
+)
+
 
         def make_font(path, size):
             try:
