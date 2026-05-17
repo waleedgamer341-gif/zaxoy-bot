@@ -9,6 +9,7 @@ import logging
 import random
 import asyncio
 import re
+from datetime import timedelta, datetime, timezone
 
 from telegram import (
     Update,
@@ -31,13 +32,27 @@ from telegram.ext import (
 # Config
 # ─────────────────────────────────────────────────────────────
 
-BOT_TOKEN = "8502998355:AAFXTOA0UJW3IBwje7wIsC-M4vTIhBXubm0"
+BOT_TOKEN = "8502998355:AAFXTOA0UJW3IBwje *wIsC-M4vTIhBXubm0"
 
 OWNER_ID = 7735152814
 
 OPENROUTER_API_KEY = "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"
 
 logging.basicConfig(level=logging.INFO)
+
+# ─────────────────────────────────────────────────────────────
+# Mute System Stores & Config
+# ─────────────────────────────────────────────────────────────
+mute_store = {}
+mute_message_map = {}
+
+MUTE_MESSAGES = [
+    "🔇 {name} has been silenced in Zaxo's domain for {duration}. The city speaks — you don't. 🇵🇱",
+    "⛓️ {name} is now muted for {duration}. Zaxo's law has been enforced. 🇵🇱",
+    "🚫 {name} — {duration} of silence. Zaxo does not tolerate noise. 🇵🇱",
+    "🌑 {name} has entered the shadow zone for {duration}. Not a word. 🇵🇱",
+    "⚔️ {name} has been struck silent for {duration} by order of Zaxoy Bot. 🇵🇱",
+]
 
 # ─────────────────────────────────────────────────────────────
 # Permission Store
@@ -290,7 +305,7 @@ ZAXO_DEFENSE =  [
 
     "⚔️ Zaxo stood for centuries — your opinion won't scratch it. 🇵🇱",
 
-    "🏔️ Zaxo is carved from mountains. Insults? Just wind. 🇵🇱",
+    "🛡️ Zaxo is carved from mountains. Insults? Just wind. 🇵🇱",
 
     "💎 Every stone in Zaxo is worth more than a thousand hateful words. 🇵🇱",
 
@@ -433,7 +448,7 @@ async def zaxo_msg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         random.choice(ZAXO_MESSAGES)
     )
-    # bot.py — Part 2/4
+
 
 # ─────────────────────────────────────────────────────────────
 # /choose Game
@@ -532,6 +547,7 @@ async def choose_names_handler(
 
     del choose_sessions[chat_id]
 
+# bot.py — Zaxoy Bot | Part 2/2
 
 # ─────────────────────────────────────────────────────────────
 # /xo Game
@@ -848,7 +864,7 @@ async def xo_move(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             reply_markup=make_xo_keyboard(game)
         )
-        # bot.py — Part 3/4
+
 
 # ─────────────────────────────────────────────────────────────
 # //r — Relay / Replace Message
@@ -1016,11 +1032,6 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
                 json={
                     "model": "google/gemma-2-9b-it:free",
-
-
-
-
-
                     "messages": [
                         {
                             "role": "user",
@@ -1037,8 +1048,6 @@ async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             answer = data["choices"][0]["message"]["content"]
         else:
             answer = str(data)
-
-
 
     except Exception as e:
 
@@ -1142,7 +1151,7 @@ async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await msg.reply_text(f"⚠️ {target_name} didn't have {specific_cmd}")
-        # bot.py — Part 4/4
+
 
 async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1170,6 +1179,7 @@ async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         await msg.reply_text(f"⚠️ {str(e)}")
+
 
 async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1199,6 +1209,7 @@ async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         reply_to_message_id=reply_to
     )
 
+
 # ─── Message router ──────────────────────────────────────────────────
 async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1206,7 +1217,6 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     text = msg.text.strip()
 
-    # Double-slash commands
     if text.startswith("//info"):
         await info_cmd(update, ctx)
     elif text.startswith("//id"):
@@ -1233,7 +1243,6 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await mute_cmd(update, ctx)
     elif text.startswith("//unmute"):
         await unmute_cmd(update, ctx)
-    
     else:
         await zaxo_defense_handler(update, ctx)
         await waleed_protection(update, ctx)
@@ -1241,7 +1250,8 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if session and session.get("step") == "waiting":
             await choose_names_handler(update, ctx)
 
-# ─── /xo handler — start or join ─────────────────────────────────────
+
+# ─── /xo handler ─────────────────────────────────────────────────────
 async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     if chat_id in xo_games and xo_games[chat_id]["p2"] is None:
@@ -1249,8 +1259,6 @@ async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     else:
         await xo_cmd(update, ctx)
 
-import re as re_module
-from datetime import timedelta, datetime, timezone
 
 def parse_duration(text: str) -> int:
     units = {
@@ -1263,12 +1271,13 @@ def parse_duration(text: str) -> int:
         'y': 31536000, 'year': 31536000, 'years': 31536000,
     }
     pattern = r'(\d+)\s*([a-zA-Z]+)'
-    matches = re_module.findall(pattern, text.lower())
+    matches = re.findall(pattern, text.lower())
     total = 0
     for amount, unit in matches:
         if unit in units:
             total += int(amount) * units[unit]
     return total
+
 
 def format_duration(seconds: int) -> str:
     parts = []
@@ -1294,16 +1303,6 @@ def format_duration(seconds: int) -> str:
         parts.append(f"{seconds} second{'s' if seconds > 1 else ''}")
     return " and ".join(parts) if parts else "0 seconds"
 
-    mute_store = {}
-    mute_message_map = {}
-
-MUTE_MESSAGES = [
-    "🔇 {name} has been silenced in Zaxo's domain for {duration}. The city speaks — you don't. 🇵🇱",
-    "⛓️ {name} is now muted for {duration}. Zaxo's law has been enforced. 🇵🇱",
-    "🚫 {name} — {duration} of silence. Zaxo does not tolerate noise. 🇵🇱",
-    "🌑 {name} has entered the shadow zone for {duration}. Not a word. 🇵🇱",
-    "⚔️ {name} has been struck silent for {duration} by order of Zaxoy Bot. 🇵🇱",
-]
 
 async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1329,6 +1328,7 @@ async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"🔇 Remaining: {format_duration(int(left.total_seconds()))}"
     )
 
+
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not has_perm(msg.from_user.id, "//mute"):
@@ -1345,7 +1345,7 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     seconds = parse_duration(duration_text)
     if seconds <= 0:
-        seconds = 600  # Default to 10 minutes if parsing fails
+        seconds = 600
 
     until_date = datetime.now(timezone.utc) + timedelta(seconds=seconds)
     mute_store[target.from_user.id] = until_date
@@ -1364,15 +1364,16 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             duration=duration_formatted
         )
         sent = await msg.reply_text(
-    alert_msg,
-    reply_markup=InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target.from_user.id}")]
-    ])
-)
+            alert_msg,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target.from_user.id}")]
+            ])
+        )
 
         mute_message_map[sent.message_id] = target.from_user.id
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
+
 
 async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1409,6 +1410,7 @@ async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to unmute user: {str(e)}")
 
+
 async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1438,7 +1440,6 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(str(e), show_alert=True)
 
 
-
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1448,39 +1449,16 @@ def main():
     app.add_handler(CommandHandler("choose", choose_cmd))
     app.add_handler(CommandHandler("xo", xo_handler))
 
-    app.add_handler(
-        CallbackQueryHandler(copy_callback, pattern="^copy_")
-    
-    )
-    
-    app.add_handler(
-    CallbackQueryHandler(unmute_button, pattern="^unmute_")
+    app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
+    app.add_handler(CallbackQueryHandler(unmute_button, pattern="^unmute_"))
+    app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
 
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(xo_move, pattern="^xo_")
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            message_router
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.Regex(r"^//"),
-            message_router
-        )
-    )
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
+    app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
 
     print("Zaxoy Bot started 🇵🇱")
-
     app.run_polling()
 
 
 if __name__ == "__main__":
     main()
-  
