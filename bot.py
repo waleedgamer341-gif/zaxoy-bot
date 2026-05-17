@@ -1608,14 +1608,19 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        W, H = 512, 512
+        # ✅ حجم ديناميكي حسب النص
+        import textwrap
+        lines = textwrap.wrap(text_to_quote, width=30)[:5]
+        H = 160 + len(lines) * 55
+        W = 512
+        
         img = Image.new("RGBA", (W, H), (20, 20, 30, 255))
         draw = ImageDraw.Draw(img)
-
         draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
 
-        AV = 120
-        AV_X, AV_Y = 28, 30
+        # Avatar
+        AV = 80
+        AV_X, AV_Y = 20, 20
         try:
             photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
             if photos.total_count > 0:
@@ -1631,13 +1636,13 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
 
-        # ✅ هنا التغيير الوحيد
-        def load_font(size):
+        # ✅ خط يدعم العربي
+        def load_font(size, bold=False):
             paths = [
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
-                "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
-                "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+                "/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf" if bold else "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+                "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf" if bold else "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
             ]
             for p in paths:
                 try:
@@ -1646,23 +1651,17 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     continue
             return ImageFont.load_default(size)
 
-        font_name  = load_font(52)
-        font_text  = load_font(36)
-        font_small = load_font(28)
+        font_name  = load_font(38, bold=True)
+        font_text  = load_font(30)
 
-        TX = AV_X + AV + 20
+        # اسم المستخدم
+        TX = AV_X + AV + 15
+        draw.text((TX, 25), user_name[:20], fill=(255, 215, 0, 255), font=font_name)
+        draw.line((TX, 95, W - 20, 95), fill=(255, 215, 0, 120), width=2)
 
-        draw.text((TX, 40), user_name[:16], fill=(255, 215, 0, 255), font=font_name)
-        draw.line((TX, 105, W - 20, 105), fill=(255, 215, 0, 120), width=2)
-
-        import textwrap
-        lines = textwrap.wrap(text_to_quote, width=18)[:4]
-
+        # ✅ النص بدون ""
         for i, line in enumerate(lines):
-            draw.text((28, 170 + i * 70), f'"{line}"' if i == 0 else line,
-                      fill=(230, 230, 230, 255), font=font_text)
-
-        draw.text((W - 160, H - 40), "@ZaxoyBot", fill=(150, 150, 150, 200), font=font_small)
+            draw.text((20, 110 + i * 55), line, fill=(230, 230, 230, 255), font=font_text)
 
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP", quality=95)
@@ -1672,6 +1671,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
+
 
 
 
