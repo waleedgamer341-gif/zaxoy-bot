@@ -1587,69 +1587,6 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    msg = update.message
-    user_id = msg.from_user.id
-    target = msg.reply_to_message
-
-    if not has_perm(user_id, "//warn"):
-        await msg.reply_text("💀 HAHAHAHAH NICE TRY! You can't warn anyone here 🗣️ 🇵🇱")
-        return
-
-    if not target:
-        await msg.reply_text("↩️ Reply to a user's message with //warn to penalize them.")
-        return
-
-    target_id = target.from_user.id
-
-    if user_id == target_id:
-        await msg.reply_text("🧠 Trying to warn yourself? Go get some sleep, bro! 🇵🇱")
-        return
-
-    try:
-        chat_member = await ctx.bot.get_chat_member(chat_id=msg.chat_id, user_id=target_id)
-        if chat_member.status in ['administrator', 'creator']:
-            await msg.reply_text("🛡️ Relax admin! You can't warn a fellow protector of Zaxoy! 🇵🇱")
-            return
-
-        current_warns = warn_store.get(target_id, 0) + 1
-        warn_store[target_id] = current_warns
-
-        if current_warns >= 3:
-            warn_store[target_id] = 0
-            until_date = datetime.now(timezone.utc) + timedelta(hours=24)
-            mute_store[target_id] = until_date
-            
-            await ctx.bot.restrict_chat_member(
-                chat_id=msg.chat_id,
-                user_id=target_id,
-                permissions=ChatPermissions(can_send_messages=False),
-                until_date=until_date
-            )
-            
-            await msg.reply_text(
-                f"💥 Game over {target.from_user.full_name}! You reached (3/3) warnings! Enjoy your 24 hours of silence by order of Zaxoy! 🇵🇱",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target_id}")]
-                ])
-            )
-        else:
-            await msg.reply_text(
-                f"⚠️ Watch your step {target.from_user.full_name}! Warning ({current_warns}/3) has been issued! Keep it clean or get hammered! 🇵🇱",
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("❌ Remove 1 Warn", callback_data=f"remwarn_{target_id}"),
-                        InlineKeyboardButton("🧹 Reset All", callback_data=f"resetwarn_{target_id}")
-                    ]
-                ])
-            )
-
-    except Exception as e:
-        await msg.reply_text(f"⚠️ Failed to process warning: {str(e)}")
-
-
-import io
-from PIL import Image, ImageDraw, ImageFont
 
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1664,8 +1601,8 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        # كبرنا الحجم هنا إلى 800 في 250 عشان يطلع الملصق كبير وواضح
-        img = Image.new("RGBA", (800, 250), (25, 25, 35, 255))
+        # أبعاد البوكس الفخم
+        img = Image.new("RGBA", (750, 220), (25, 25, 35, 255))
         draw = ImageDraw.Draw(img)
 
         try:
@@ -1674,27 +1611,37 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 file_id = photos.photos[0][-1].file_id
                 photo_file = await ctx.bot.get_file(file_id)
                 photo_bytes = await photo_file.download_as_bytearray()
-                # كبرنا حجم صورة البروفايل لتناسب المقاس الجديد
-                avatar = Image.open(io.BytesIO(photo_bytes)).resize((120, 120))
+                avatar = Image.open(io.BytesIO(photo_bytes)).resize((110, 110))
                 
-                mask = Image.new("L", (120, 120), 0)
+                mask = Image.new("L", (110, 110), 0)
                 mask_draw = ImageDraw.Draw(mask)
-                mask_draw.ellipse((0, 0, 120, 120), fill=255)
-                img.paste(avatar, (40, 65), mask=mask)
+                mask_draw.ellipse((0, 0, 110, 110), fill=255)
+                img.paste(avatar, (35, 55), mask=mask)
             else:
-                draw.ellipse((40, 65, 160, 185), fill=(70, 130, 180, 255))
+                draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
         except Exception:
-            draw.ellipse((40, 65, 160, 185), fill=(70, 130, 180, 255))
+            draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
 
-        # هنا استخدمنا خطوط النظام الأساسية عشان تدعم الحجم والأشكال بشكل أفضل
-        font_name = ImageFont.load_default()
-        font_text = ImageFont.load_default()
+        # 🧠 محاولة تحميل خط حقيقي وكبير يدعم الأحجام والرموز
+        try:
+            # هذا الخط متوفر أساسياً في سيرفرات لينكس/Railway ويدعم الحجم والعربي
+            font_name = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
+            font_text = ImageFont.truetype("DejaVuSans.ttf", 24)
+        except IOError:
+            try:
+                # خط احتياطي في حال عدم توفر الأول
+                font_name = ImageFont.truetype("arial.ttf", 32)
+                font_text = ImageFont.truetype("arial.ttf", 24)
+            except IOError:
+                # كحل أخير إذا لم تتوفر خطوط (نظام بايثون الافتراضي المحسن)
+                font_name = ImageFont.load_default()
+                font_text = ImageFont.load_default()
 
-        # ضبطنا مسافات النصوص وأماكنها لتكون متناسقة وكبيرة
-        draw.text((200, 60), f"{user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
+        # إحداثيات النصوص الجديدة الموزونة لتناسب الخط الكبير
+        draw.text((175, 55), f"{user_name[:25]}", fill=(255, 215, 0, 255), font=font_name)
         
-        wrapped_text = text_to_quote[:100] + "..." if len(text_to_quote) > 100 else text_to_quote
-        draw.text((200, 120), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
+        wrapped_text = text_to_quote[:80] + "..." if len(text_to_quote) > 80 else text_to_quote
+        draw.text((175, 115), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
 
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP")
