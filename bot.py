@@ -1625,7 +1625,7 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
-    app.add_handler(CommandHandler("warn", warn_cmd))
+    
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
