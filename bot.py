@@ -1637,71 +1637,89 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         import textwrap, requests, tempfile, re
 
-        def load_font(size, bold=False):
-            url = (
-                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf"
-                 if bold else
-                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf"
-
-            )
+        # ── تحميل الخطوط ──────────────────────────────────────
+        def download_font(url):
             try:
                 r = requests.get(url, timeout=15)
                 tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ttf")
                 tmp.write(r.content)
                 tmp.close()
-                return ImageFont.truetype(tmp.name, size)
-            except:
-                return ImageFont.load_default(size)
-
-        def get_emoji_image(emoji_char, size):
-            try:
-                code = format(ord(emoji_char), 'x')
-                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
-
-                r = requests.get(url, timeout=5)
-                em = Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
-                return em
+                return tmp.name
             except:
                 return None
 
-        def draw_with_emoji(img, pos, text, font, font_size, fill):
+        text_font_path = download_font(
+            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf"
+        )
+        text_font_reg_path = download_font(
+            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf"
+        )
+
+        def make_font(path, size):
+            try:
+                return ImageFont.truetype(path, size)
+            except:
+                return ImageFont.load_default(size)
+
+        font_name = make_font(text_font_path, 36)
+        font_text = make_font(text_font_reg_path, 28)
+
+        # ── جلب إيموجي من Twemoji ─────────────────────────────
+        def get_emoji_img(char, size):
+            try:
+                code = "-".join(format(ord(c), 'x') for c in char)
+                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
+                r = requests.get(url, timeout=5)
+                if r.status_code == 200:
+                    return Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
+            except:
+                pass
+            return None
+
+        # ── رسم نص مع إيموجي ──────────────────────────────────
+        def draw_mixed(img, pos, text, font, size, fill):
             x, y = pos
-            emoji_pattern = re.compile(
-                "[\U0001F300-\U0001FFFF\U00002600-\U000027BF]+",
-                flags=re.UNICODE
-            )
-            parts = re.split(r'([\U0001F300-\U0001FFFF\U00002600-\U000027BF])', text)
             draw = ImageDraw.Draw(img)
+            emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF]')
+            parts = re.split(r'([\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF])', text)
             for part in parts:
                 if not part:
                     continue
-                if emoji_pattern.match(part):
-                    em_img = get_emoji_image(part, font_size)
-                    if em_img:
-                        img.paste(em_img, (x, y), em_img)
-                        x += font_size + 2
+                if emoji_re.fullmatch(part):
+                    em = get_emoji_img(part, size)
+                    if em:
+                        img.paste(em, (x, y), em)
+                        x += size + 2
                     else:
                         draw.text((x, y), part, font=font, fill=fill)
-                        bbox = font.getbbox(part)
-                        x += bbox[2] - bbox[0]
+                        x += font.getbbox(part)[2]
                 else:
                     draw.text((x, y), part, font=font, fill=fill)
-                    bbox = font.getbbox(part)
-                    x += bbox[2] - bbox[0]
+                    x += font.getbbox(part)[2] - font.getbbox(part)[0]
 
-        font_name = load_font(38, bold=True)
-        font_text = load_font(30)
-
-        lines = textwrap.wrap(text_to_quote, width=30)[:5]
-        H = max(160, 120 + len(lines) * 55)
+        # ── الحجم ─────────────────────────────────────────────
+        lines = textwrap.wrap(text_to_quote, width=28)[:5]
+        H = max(180, 140 + len(lines) * 52)
         W = 512
 
-        img = Image.new("RGBA", (W, H), (20, 20, 30, 255))
-        draw = ImageDraw.Draw(img)
-        draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
+        # ── الخلفية بزوايا مدورة ──────────────────────────────
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        bg = Image.new("RGBA", (W, H), (30, 28, 45, 255))
 
-        AV = 80
-        AV_X, AV_Y = 20, 20
+        mask = Image.new("L", (W, H), 0)
+        from PIL import ImageDraw as ID
+        md = ID.Draw(mask)
+        md.rounded_rectangle((0, 0, W, H), radius=28, fill=255)
+        img.paste(bg, (0, 0), mask)
+
+        draw = ImageDraw.Draw(img)
+
+        # ── خط جانبي وردي ─────────────────────────────────────
+        draw.rounded_rectangle((0, 0, 7, H), radius=4, fill=(220, 80, 100, 255))
+
+        # ── أفاتار ────────────────────────────────────────────
+        AV = 72
+        AV_X, AV_Y = 18, 18
         try:
             photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
             if photos.total_count > 0:
@@ -1709,21 +1727,26 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 photo_file = await ctx.bot.get_file(file_id)
                 photo_bytes = await photo_file.download_as_bytearray()
                 avatar = Image.open(io.BytesIO(photo_bytes)).convert("RGBA").resize((AV, AV))
-                mask = Image.new("L", (AV, AV), 0)
-                ImageDraw.Draw(mask).ellipse((0, 0, AV, AV), fill=255)
-                img.paste(avatar, (AV_X, AV_Y), mask=mask)
+                av_mask = Image.new("L", (AV, AV), 0)
+                ImageDraw.Draw(av_mask).ellipse((0, 0, AV, AV), fill=255)
+                img.paste(avatar, (AV_X, AV_Y), av_mask)
             else:
-                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
-        except Exception:
-            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
+                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
+        except:
+            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
 
-        TX = AV_X + AV + 15
-        draw_with_emoji(img, (TX, 25), user_name[:20], font_name, 38, (255, 215, 0, 255))
-        draw.line((TX, 95, W - 20, 95), fill=(255, 215, 0, 120), width=2)
+        # ── الاسم بلون وردي/برتقالي ───────────────────────────
+        TX = AV_X + AV + 14
+        draw_mixed(img, (TX, 20), user_name[:22], font_name, 36, (220, 100, 80, 255))
 
+        # ── فاصل ──────────────────────────────────────────────
+        draw.line((TX, 75, W - 16, 75), fill=(80, 75, 100, 255), width=1)
+
+        # ── النص ──────────────────────────────────────────────
         for i, line in enumerate(lines):
-            draw_with_emoji(img, (20, 110 + i * 55), line, font_text, 30, (230, 230, 230, 255))
+            draw_mixed(img, (18, 88 + i * 52), line, font_text, 28, (220, 220, 230, 255))
 
+        # ── حفظ ───────────────────────────────────────────────
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP", quality=50, method=6)
         sticker_io.seek(0)
