@@ -1370,8 +1370,8 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ])
 )
 
-       mute_message_map[sent.message_id] = target.from_user.id
-       except Exception as e:
+    mute_message_map[sent.message_id] = target.from_user.id
+        except Exception as e:
         await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
 
 async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
