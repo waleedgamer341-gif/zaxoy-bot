@@ -1572,7 +1572,7 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         else:
             await query.answer("User has 0 warnings already!", show_alert=True)
 
-    # 3. Reset All Warnings Button Logic
+       # 3. Reset All Warnings Button Logic
     elif data.startswith("resetwarn_"):
         if not has_perm(query.from_user.id, "//warn"):
             await query.answer("💀 Nice try! You don't have permission to modify warnings!", show_alert=True)
@@ -1584,8 +1584,6 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=f"🧹 Clean slate! {chat_member.user.full_name}'s warnings have been reset to (0/3)! 🇵🇱", reply_markup=None)
         except Exception:
             pass
-    except Exception as e:
-        await query.answer(str(e), show_alert=True)
 
 async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
