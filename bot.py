@@ -1645,6 +1645,60 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to process warning: {str(e)}")
 
+
+import io
+from PIL import Image, ImageDraw, ImageFont
+
+async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    
+    if not msg.reply_to_message:
+        await msg.reply_text("↩️ Reply to any message with //shot to capture it into a sticker!")
+        return
+
+    target_msg = msg.reply_to_message
+    text_to_quote = target_msg.text or target_msg.caption or "💬 [Media]"
+    user_name = target_msg.from_user.full_name
+    user_id = target_msg.from_user.id
+
+    try:
+        img = Image.new("RGBA", (512, 180), (25, 25, 35, 255))
+        draw = ImageDraw.Draw(img)
+
+        try:
+            photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
+            if photos.total_count > 0:
+                file_id = photos.photos[0][-1].file_id
+                photo_file = await ctx.bot.get_file(file_id)
+                photo_bytes = await photo_file.download_as_bytearray()
+                avatar = Image.open(io.BytesIO(photo_bytes)).resize((75, 75))
+                
+                mask = Image.new("L", (75, 75), 0)
+                mask_draw = ImageDraw.Draw(mask)
+                mask_draw.ellipse((0, 0, 75, 75), fill=255)
+                img.paste(avatar, (25, 25), mask=mask)
+            else:
+                draw.ellipse((25, 25, 100, 100), fill=(70, 130, 180, 255))
+        except Exception:
+            draw.ellipse((25, 25, 100, 100), fill=(70, 130, 180, 255))
+
+        font_name = ImageFont.load_default()
+        font_text = ImageFont.load_default()
+
+        draw.text((120, 30), f"✨ {user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
+        
+        wrapped_text = text_to_quote[:75] + "..." if len(text_to_quote) > 75 else text_to_quote
+        draw.text((120, 65), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
+
+        sticker_io = io.BytesIO()
+        img.save(sticker_io, format="WEBP")
+        sticker_io.seek(0)
+
+        await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
+
+    except Exception as e:
+        await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1659,8 +1713,10 @@ def main():
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
 
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
+    
     
 
     print("Zaxoy Bot started 🇵🇱")
