@@ -1625,7 +1625,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
     if not msg.reply_to_message:
-        await msg.reply_text("↩️ Reply to any message with //shot to capture it into a sticker!")
+        await msg.reply_text("↩️ Reply to any message with //shot to capture it!")
         return
 
     target_msg = msg.reply_to_message
@@ -1634,94 +1634,40 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        import textwrap, requests, tempfile, re
+        import textwrap, requests, io, re
 
-        FONT_CACHE = {}
-
-        def download_font(url):
-            if url in FONT_CACHE:
-                return FONT_CACHE[url]
-            try:
-                r = requests.get(url, timeout=15)
-                if r.status_code != 200:
-                    return None
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ttf")
-                tmp.write(r.content)
-                tmp.close()
-                FONT_CACHE[url] = tmp.name
-                return tmp.name
-            except:
-                return None
-
-        ALL_FONTS = [
-            "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf",
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf",
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/rubik/Rubik-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/mada/Mada-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/almarai/Almarai-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/ibmplexsansarabic/IBMPlexSansArabic-Bold.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/scheherazadenew/ScheherazadeNew-Bold.ttf",
-        ]
-
-        ALL_FONTS_REG = [
-            "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Regular.ttf",
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf",
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/rubik/Rubik-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/mada/Mada-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/almarai/Almarai-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/ibmplexsansarabic/IBMPlexSansArabic-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/scheherazadenew/ScheherazadeNew-Regular.ttf",
-        ]
-
-        loaded_fonts_bold = []
-        loaded_fonts_reg = []
-
-        for url in ALL_FONTS:
-            path = download_font(url)
-            if path:
+        # ── حل مشكلة الخطوط والمربعات من داخل الدالة ──────────────────
+        # نبحث عن الخط الأساسي بالنظام ليدعم الحروف العربية والكردية (ڤ، چ) بدون قروشة تحميل
+        def load_system_font(size, bold=False):
+            font_names = [
+                "arial.ttf" if not bold else "arialbd.ttf",  # ويندوز وسيرفرات كثيرة
+                "DejaVuSans.ttf" if not bold else "DejaVuSans-Bold.ttf",  # لينكس / أوبونتو
+                "LiberationSans-Regular.ttf" if not bold else "LiberationSans-Bold.ttf",
+            ]
+            for font_name in font_names:
                 try:
-                    loaded_fonts_bold.append(ImageFont.truetype(path, 36))
+                    return ImageFont.truetype(font_name, size)
                 except:
-                    pass
+                    continue
+            return ImageFont.load_default(size)
 
-        for url in ALL_FONTS_REG:
-            path = download_font(url)
-            if path:
-                try:
-                    loaded_fonts_reg.append(ImageFont.truetype(path, 28))
-                except:
-                    pass
+        font_name = load_system_font(34, bold=True)
+        font_text = load_system_font(26, bold=False)
 
-        fallback_bold = ImageFont.load_default(36)
-        fallback_reg = ImageFont.load_default(28)
-
-        def get_font_for_char(char, fonts, fallback):
-            for font in fonts:
-                try:
-                    if font.getbbox(char)[2] > 0:
-                        return font
-                except:
-                    pass
-            return fallback
-
+        # ── جلب إيموجي من Twemoji ─────────────────────────────
         def get_emoji_img(char, size):
             try:
                 code = "-".join(format(ord(c), 'x') for c in char)
                 url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
-                r = requests.get(url, timeout=5)
+                r = requests.get(url, timeout=4)
                 if r.status_code == 200:
                     return Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
             except:
                 pass
             return None
 
-        def draw_mixed(img, pos, text, fonts, fallback, font_size, fill):
+        # ── رسم نص مع إيموجي ودعم كامل للحروف (ڤ، چ) ──────────────────
+        def draw_mixed(img, pos, text, font, size, fill):
             x, y = pos
             draw = ImageDraw.Draw(img)
             emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF]')
@@ -1730,35 +1676,39 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 if not part:
                     continue
                 if emoji_re.fullmatch(part):
-                    em = get_emoji_img(part, font_size)
+                    em = get_emoji_img(part, size)
                     if em:
                         img.paste(em, (x, y), em)
-                        x += font_size + 2
+                        x += size + 3
                     else:
-                        font = get_font_for_char(part, fonts, fallback)
                         draw.text((x, y), part, font=font, fill=fill)
-                        x += font.getbbox(part)[2] - font.getbbox(part)[0]
+                        x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
                 else:
-                    for char in part:
-                        font = get_font_for_char(char, fonts, fallback)
-                        draw.text((x, y), char, font=font, fill=fill)
-                        x += font.getbbox(char)[2] - font.getbbox(char)[0] + 1
+                    draw.text((x, y), part, font=font, fill=fill)
+                    x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
 
-        lines = textwrap.wrap(text_to_quote, width=28)[:5]
-        H = max(180, 140 + len(lines) * 52)
-        W = 512
+        # ── الحجم والأسطر ─────────────────────────────────────────────
+        lines = textwrap.wrap(text_to_quote, width=32)[:6]
+        H = max(200, 150 + len(lines) * 45)
+        W = 600
 
+        # ── الخلفية بزوايا مدورة (ثيم تليجرام المظلم الأصلي) ─────────────────
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        bg = Image.new("RGBA", (W, H), (30, 28, 45, 255))
+        bg = Image.new("RGBA", (W, H), (23, 33, 43, 255))
+
         mask = Image.new("L", (W, H), 0)
-        ImageDraw.Draw(mask).rounded_rectangle((0, 0, W, H), radius=28, fill=255)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, W, H), radius=22, fill=255)
         img.paste(bg, (0, 0), mask)
 
         draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle((0, 0, 7, H), radius=4, fill=(220, 80, 100, 255))
 
+        # ── خط جانبي أزرق تليجرامي فخم يعطي إيحاء لقطة محادثة مقتبسة ──────
+        draw.rounded_rectangle((0, 0, 6, H), radius=3, fill=(82, 136, 193, 255))
+
+        # ── أفاتار ────────────────────────────────────────────
         AV = 72
-        AV_X, AV_Y = 18, 18
+        AV_X, AV_Y = 22, 22
+        avatar_loaded = False
         try:
             photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
             if photos.total_count > 0:
@@ -1769,23 +1719,40 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 av_mask = Image.new("L", (AV, AV), 0)
                 ImageDraw.Draw(av_mask).ellipse((0, 0, AV, AV), fill=255)
                 img.paste(avatar, (AV_X, AV_Y), av_mask)
-            else:
-                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
+                avatar_loaded = True
         except:
-            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
+            pass
 
-        TX = AV_X + AV + 14
-        draw_mixed(img, (TX, 20), user_name[:22], loaded_fonts_bold, fallback_bold, 36, (220, 100, 80, 255))
-        draw.line((TX, 75, W - 16, 75), fill=(80, 75, 100, 255), width=1)
+        if not avatar_loaded:
+            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(51, 67, 85, 255))
+            first_char = user_name[0] if user_name else "?"
+            draw.text((AV_X+24, AV_Y+16), first_char, font=font_name, fill=(255, 255, 255, 255))
 
+        # ── الاسم بلون أزرق تليجرام الفاتح ───────────────────────────
+        TX = AV_X + AV + 16
+        draw_mixed(img, (TX, 24), user_name[:24], font_name, 34, (82, 136, 193, 255))
+
+        # ── النص ──────────────────────────────────────────────
         for i, line in enumerate(lines):
-            draw_mixed(img, (18, 88 + i * 52), line, loaded_fonts_reg, fallback_reg, 28, (220, 220, 230, 255))
+            draw_mixed(img, (TX, 82 + i * 42), line, font_text, 26, (255, 255, 255, 255))
 
-        sticker_io = io.BytesIO()
-        img.save(sticker_io, format="WEBP", quality=50, method=6)
-        sticker_io.seek(0)
+        # ── حفظ وإرسال كصورة (حيلة الشوت وبدون علامة تحويل) ──────────────────
+        shot_io = io.BytesIO()
+        img.save(shot_io, format="PNG")
+        shot_io.seek(0)
 
-        await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
+        # إرسال كـ Photo وليس ملصق لتظهر كلقطة شاشة نظيفة
+        await ctx.bot.send_photo(
+            chat_id=msg.chat_id, 
+            photo=shot_io,
+            reply_to_message_id=target_msg.message_id
+        )
+
+        # مسح رسالة الأمر //shot عشان يصفى الشات
+        try:
+            await msg.delete()
+        except:
+            pass
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
