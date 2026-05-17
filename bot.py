@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────────────────────
 # Imports
 # ─────────────────────────────────────────────────────────────
-import os; os.system("pip install Pillow")
+import os; os.system("pip install Pillow requests")
 import io
 from PIL import Image, ImageDraw, ImageFont
 import logging
@@ -1595,6 +1595,7 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     await msg.reply_text("⚠️ A warning has been registered for this user.")
 
+
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
@@ -1608,12 +1609,31 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        # ✅ حجم ديناميكي حسب النص
-        import textwrap
+        import textwrap, requests, tempfile
+
+        # Download emoji-supporting font
+        def load_font(size, bold=False):
+            url = (
+                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf"
+                if bold else
+                "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+            )
+            try:
+                r = requests.get(url, timeout=10)
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ttf")
+                tmp.write(r.content)
+                tmp.close()
+                return ImageFont.truetype(tmp.name, size)
+            except:
+                return ImageFont.load_default(size)
+
+        font_name = load_font(38, bold=True)
+        font_text = load_font(30)
+
         lines = textwrap.wrap(text_to_quote, width=30)[:5]
-        H = 160 + len(lines) * 55
+        H = max(160, 120 + len(lines) * 55)
         W = 512
-        
+
         img = Image.new("RGBA", (W, H), (20, 20, 30, 255))
         draw = ImageDraw.Draw(img)
         draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
@@ -1636,30 +1656,13 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
 
-        # ✅ خط يدعم العربي
-        def load_font(size, bold=False):
-            paths = [
-                "/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf" if bold else "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
-                "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf" if bold else "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
-            ]
-            for p in paths:
-                try:
-                    return ImageFont.truetype(p, size)
-                except:
-                    continue
-            return ImageFont.load_default(size)
+        # Name — strip non-ASCII but keep letters/numbers/spaces
+        name_clean = user_name.encode('ascii', 'ignore').decode('ascii').strip()[:20] or "User"
 
-        font_name  = load_font(38, bold=True)
-        font_text  = load_font(30)
-
-        # اسم المستخدم
         TX = AV_X + AV + 15
-        draw.text((TX, 25), user_name[:20], fill=(255, 215, 0, 255), font=font_name)
+        draw.text((TX, 25), name_clean, fill=(255, 215, 0, 255), font=font_name)
         draw.line((TX, 95, W - 20, 95), fill=(255, 215, 0, 120), width=2)
 
-        # ✅ النص بدون ""
         for i, line in enumerate(lines):
             draw.text((20, 110 + i * 55), line, fill=(230, 230, 230, 255), font=font_text)
 
@@ -1671,7 +1674,6 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
-
 
 
 
