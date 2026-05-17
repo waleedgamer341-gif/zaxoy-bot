@@ -1323,9 +1323,66 @@ async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("✅ Mute expired.")
         return
 
-    await msg.reply_text(
-        f"🔇 Remaining: {format_duration(int(left.total_seconds()))}"
-    )
+    
+
+
+# ─────────────────────────────────────────────────────────────
+# MUTE SYSTEM WITH MATCHING RESPONSES (AUTO & MANUAL)
+# ─────────────────────────────────────────────────────────────
+
+MUTE_MESSAGES = [
+    "🤫 {name} has been silenced for {duration} by order of Zaxoy! 🇵🇱",
+    "🚫 Calm down {name}, take a break from chatting for {duration}! 🇵🇱",
+    "⚡ The hammer has fallen! {name} is muted for {duration}! 🇵🇱"
+]
+
+UNMUTE_MESSAGES = [
+    "🔊 Zaxoy's order has expired! {name} is free to speak again! 🇵🇱",
+    "✅ Break is over {name}! You can type in the chat now! 🇵🇱",
+    "🔓 The hammer is lifted! {name} has been unmuted! 🇵🇱"
+]
+
+if 'mute_msg_index_map' not in globals():
+    mute_msg_index_map = {}
+
+async def auto_unmute_task(chat_id: int, user_id: int, message_id: int, user_name: str, message_index: int, delay_seconds: int, ctx: ContextTypes.DEFAULT_TYPE):
+    await asyncio.sleep(delay_seconds)
+    if user_id in mute_store and datetime.now(timezone.utc) >= mute_store[user_id]:
+        mute_store.pop(user_id, None)
+        mute_msg_index_map.pop(message_id, None)
+        try:
+            reply_text = UNMUTE_MESSAGES[message_index].format(name=user_name)
+            await ctx.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=reply_text,
+                reply_markup=None
+            )
+        except Exception:
+            pass
+
+async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    target = msg.reply_to_message
+
+    if not target:
+        return
+
+    uid = target.from_user.id
+
+    if uid not in mute_store:
+        await msg.reply_text("✅ Not muted.")
+        return
+
+    left = mute_store[uid] - datetime.now(timezone.utc)
+
+    if left.total_seconds() <= 0:
+        mute_store.pop(uid, None)
+        await msg.reply_text("✅ Mute expired.")
+        return
+
+    duration_formatted = format_duration(int(left.total_seconds()))
+    await msg.reply_text(f"⏳ User is still muted. Remaining time: {duration_formatted}")
 
 
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -1358,18 +1415,26 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         
         duration_formatted = format_duration(seconds)
-        alert_msg = random.choice(MUTE_MESSAGES).format(
+        msg_idx = random.randint(0, len(MUTE_MESSAGES) - 1)
+        alert_msg = MUTE_MESSAGES[msg_idx].format(
             name=target.from_user.full_name,
             duration=duration_formatted
         )
+        
         sent = await msg.reply_text(
             alert_msg,
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target.from_user.id}")]
             ])
         )
-
         mute_message_map[sent.message_id] = target.from_user.id
+        mute_msg_index_map[sent.message_id] = msg_idx
+        
+        asyncio.create_task(auto_unmute_task(
+            msg.chat_id, target.from_user.id, sent.message_id, 
+            target.from_user.full_name, msg_idx, seconds, ctx
+        ))
+
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
 
@@ -1390,21 +1455,14 @@ async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             chat_id=msg.chat_id,
             user_id=target.from_user.id,
             permissions=ChatPermissions(
-                can_send_messages=True,
-                can_send_audios=True,
-                can_send_documents=True,
-                can_send_photos=True,
-                can_send_videos=True,
-                can_send_video_notes=True,
-                can_send_voice_notes=True,
-                can_send_polls=True,
-                can_send_other_messages=True,
-                can_add_web_page_previews=True,
-                can_change_info=True,
-                can_invite_users=True,
+                can_send_messages=True, can_send_audios=True, can_send_documents=True,
+                can_send_photos=True, can_send_videos=True, can_send_video_notes=True,
+                can_send_voice_notes=True, can_send_polls=True, can_send_other_messages=True,
+                can_add_web_page_previews=True, can_change_info=True, can_invite_users=True,
                 can_pin_messages=True
             )
         )
+        mute_store.pop(target.from_user.id, None)
         await msg.reply_text(f"🔊 {target.from_user.full_name} has been unmuted. Welcome back to the conversation in Zaxo! 🇵🇱")
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to unmute user: {str(e)}")
@@ -1419,22 +1477,29 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     uid = int(query.data.split("_")[1])
+    mid = query.message.message_id
 
     try:
         await ctx.bot.restrict_chat_member(
             chat_id=query.message.chat_id,
             user_id=uid,
             permissions=ChatPermissions(
-                can_send_messages=True
+                can_send_messages=True, can_send_audios=True, can_send_documents=True,
+                can_send_photos=True, can_send_videos=True, can_send_video_notes=True,
+                can_send_voice_notes=True, can_send_polls=True, can_send_other_messages=True,
+                can_add_web_page_previews=True, can_change_info=True, can_invite_users=True,
+                can_pin_messages=True
             )
         )
-
         mute_store.pop(uid, None)
-
+        
+        msg_idx = mute_msg_index_map.pop(mid, 0)
+        reply_text = UNMUTE_MESSAGES[msg_idx].format(name=query.message.reply_to_message.from_user.full_name if query.message.reply_to_message else "User")
+        
         await query.edit_message_text(
-            f"🔈 User can speak now — released by order of Zaxoy Bot 🇵🇱"
+            text=reply_text,
+            reply_markup=None
         )
-
     except Exception as e:
         await query.answer(str(e), show_alert=True)
 
