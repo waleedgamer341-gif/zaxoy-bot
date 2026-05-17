@@ -1588,14 +1588,6 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
 
 
-async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    msg = update.message
-    if not msg.reply_to_message:
-        await msg.reply_text("⚠️ You must reply to the user's message you want to warn.")
-        return
-    await msg.reply_text("⚠️ A warning has been registered for this user.")
-
-
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
@@ -1611,7 +1603,6 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         import textwrap, requests, tempfile
 
-        # Download emoji-supporting font
         def load_font(size, bold=False):
             url = (
                 "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf"
@@ -1638,7 +1629,6 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         draw = ImageDraw.Draw(img)
         draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
 
-        # Avatar
         AV = 80
         AV_X, AV_Y = 20, 20
         try:
@@ -1656,8 +1646,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
 
-        # Name — strip non-ASCII but keep letters/numbers/spaces
-        name_clean = user_name.encode('ascii', 'ignore').decode('ascii').strip()[:20] or "User"
+        name_clean = user_name.strip()[:20] or "User"
 
         TX = AV_X + AV + 15
         draw.text((TX, 25), name_clean, fill=(255, 215, 0, 255), font=font_name)
