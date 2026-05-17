@@ -1648,12 +1648,27 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             except:
                 return None
 
-        text_font_path = download_font(
-            "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf"
-        )
-        text_font_reg_path = download_font(
-            "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Regular.ttf"
-        )
+        font_urls_bold = [
+            "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf",
+            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf",
+            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf",
+        ]
+        font_urls_reg = [
+            "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Regular.ttf",
+            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf",
+            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf",
+        ]
+        text_font_path = None
+        text_font_reg_path = None
+        for url in font_urls_bold:
+            text_font_path = download_font(url)
+            if text_font_path:
+                break
+        for url in font_urls_reg:
+            text_font_reg_path = download_font(url)
+            if text_font_reg_path:
+                break
+
 
 
 
