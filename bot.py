@@ -1516,37 +1516,74 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if not has_perm(query.from_user.id, "//mute"):
-        await query.answer("⛔ No permission", show_alert=True)
-        return
-
-    uid = int(query.data.split("_")[1])
+    data = query.data
+    uid = int(data.split("_")[1])
     mid = query.message.message_id
 
-    try:
-        chat_member = await ctx.bot.get_chat_member(chat_id=query.message.chat_id, user_id=uid)
-        target_name = chat_member.user.full_name
+    # 1. Unmute Button Logic
+    if data.startswith("unmute_"):
+        if not has_perm(query.from_user.id, "//mute"):
+            await query.answer("⛔ No permission to unmute!", show_alert=True)
+            return
+        try:
+            chat_member = await ctx.bot.get_chat_member(chat_id=query.message.chat_id, user_id=uid)
+            target_name = chat_member.user.full_name
 
-        await ctx.bot.restrict_chat_member(
-            chat_id=query.message.chat_id,
-            user_id=uid,
-            permissions=ChatPermissions(
-                can_send_messages=True, can_send_audios=True, can_send_documents=True,
-                can_send_photos=True, can_send_videos=True, can_send_video_notes=True,
-                can_send_voice_notes=True, can_send_polls=True, can_send_other_messages=True,
-                can_add_web_page_previews=True, can_change_info=True, can_invite_users=True,
-                can_pin_messages=True
+            await ctx.bot.restrict_chat_member(
+                chat_id=query.message.chat_id,
+                user_id=uid,
+                permissions=ChatPermissions(
+                    can_send_messages=True, can_send_audios=True, can_send_documents=True,
+                    can_send_photos=True, can_send_videos=True, can_send_video_notes=True,
+                    can_send_voice_notes=True, can_send_polls=True, can_send_other_messages=True,
+                    can_add_web_page_previews=True, can_change_info=True, can_invite_users=True,
+                    can_pin_messages=True
+                )
             )
-        )
-        mute_store.pop(uid, None)
-        
-        msg_idx = mute_msg_index_map.pop(mid, 0)
-        reply_text = UNMUTE_MESSAGES[msg_idx].format(name=target_name)
-        
-        await query.edit_message_text(
-            text=reply_text,
-            reply_markup=None
-        )
+            mute_store.pop(uid, None)
+            
+            msg_idx = mute_msg_index_map.pop(mid, 0)
+            reply_text = UNMUTE_MESSAGES[msg_idx].format(name=target_name)
+            
+            await query.edit_message_text(text=reply_text, reply_markup=None)
+        except Exception as e:
+            await query.answer(str(e), show_alert=True)
+
+    # 2. Remove 1 Warning Button Logic
+    elif data.startswith("remwarn_"):
+        if not has_perm(query.from_user.id, "//warn"):
+            await query.answer("💀 Nice try! You don't have permission to modify warnings!", show_alert=True)
+            return
+        current = warn_store.get(uid, 0)
+        if current > 0:
+            warn_store[uid] = current - 1
+            await query.answer(f"❌ Removed 1 warning. Current: ({warn_store[uid]}/3)", show_alert=True)
+            try:
+                chat_member = await ctx.bot.get_chat_member(chat_id=query.message.chat_id, user_id=uid)
+                await query.edit_message_text(
+                    text=f"⚠️ Warning removed by admin! {chat_member.user.full_name} now has ({warn_store[uid]}/3) warnings. 🇵🇱",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("❌ Remove 1 Warn", callback_data=f"remwarn_{uid}"),
+                        InlineKeyboardButton("🧹 Reset All", callback_data=f"resetwarn_{uid}")
+                    ]]) if warn_store[uid] > 0 else None
+                )
+            except Exception:
+                pass
+        else:
+            await query.answer("User has 0 warnings already!", show_alert=True)
+
+    # 3. Reset All Warnings Button Logic
+    elif data.startswith("resetwarn_"):
+        if not has_perm(query.from_user.id, "//warn"):
+            await query.answer("💀 Nice try! You don't have permission to modify warnings!", show_alert=True)
+            return
+        warn_store[uid] = 0
+        await query.answer("🧹 All warnings have been reset to 0!", show_alert=True)
+        try:
+            chat_member = await ctx.bot.get_chat_member(chat_id=query.message.chat_id, user_id=uid)
+            await query.edit_message_text(text=f"🧹 Clean slate! {chat_member.user.full_name}'s warnings have been reset to (0/3)! 🇵🇱", reply_markup=None)
+        except Exception:
+            pass
     except Exception as e:
         await query.answer(str(e), show_alert=True)
 
@@ -1620,7 +1657,7 @@ def main():
     app.add_handler(CommandHandler("xo", xo_handler))
 
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
-    app.add_handler(CallbackQueryHandler(unmute_button, pattern="^unmute_"))
+    app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
 
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
