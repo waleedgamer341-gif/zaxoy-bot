@@ -1621,7 +1621,6 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ]])
     )
 
-
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
@@ -1637,37 +1636,159 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         import textwrap, requests, tempfile, re
 
-        # ── تحميل الخطوط ──────────────────────────────────────
+        FONT_CACHE = {}
+
         def download_font(url):
+            if url in FONT_CACHE:
+                return FONT_CACHE[url]
             try:
                 r = requests.get(url, timeout=15)
+                if r.status_code != 200:
+                    return None
                 tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ttf")
                 tmp.write(r.content)
                 tmp.close()
+                FONT_CACHE[url] = tmp.name
                 return tmp.name
             except:
                 return None
 
-        font_urls_bold = [
+        ALL_FONTS = [
             "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf",
             "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf",
             "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/rubik/Rubik-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/mada/Mada-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/almarai/Almarai-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/ibmplexsansarabic/IBMPlexSansArabic-Bold.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/scheherazadenew/ScheherazadeNew-Bold.ttf",
         ]
-        font_urls_reg = [
+
+        ALL_FONTS_REG = [
             "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Regular.ttf",
             "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf",
             "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/rubik/Rubik-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/mada/Mada-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/almarai/Almarai-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/ibmplexsansarabic/IBMPlexSansArabic-Regular.ttf",
+            "https://github.com/google/fonts/raw/main/ofl/scheherazadenew/ScheherazadeNew-Regular.ttf",
         ]
-        text_font_path = None
-        text_font_reg_path = None
-        for url in font_urls_bold:
-            text_font_path = download_font(url)
-            if text_font_path:
-                break
-        for url in font_urls_reg:
-            text_font_reg_path = download_font(url)
-            if text_font_reg_path:
-                break
+
+        loaded_fonts_bold = []
+        loaded_fonts_reg = []
+
+        for url in ALL_FONTS:
+            path = download_font(url)
+            if path:
+                try:
+                    loaded_fonts_bold.append(ImageFont.truetype(path, 36))
+                except:
+                    pass
+
+        for url in ALL_FONTS_REG:
+            path = download_font(url)
+            if path:
+                try:
+                    loaded_fonts_reg.append(ImageFont.truetype(path, 28))
+                except:
+                    pass
+
+        fallback_bold = ImageFont.load_default(36)
+        fallback_reg = ImageFont.load_default(28)
+
+        def get_font_for_char(char, fonts, fallback):
+            for font in fonts:
+                try:
+                    if font.getbbox(char)[2] > 0:
+                        return font
+                except:
+                    pass
+            return fallback
+
+        def get_emoji_img(char, size):
+            try:
+                code = "-".join(format(ord(c), 'x') for c in char)
+                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
+                r = requests.get(url, timeout=5)
+                if r.status_code == 200:
+                    return Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
+            except:
+                pass
+            return None
+
+        def draw_mixed(img, pos, text, fonts, fallback, font_size, fill):
+            x, y = pos
+            draw = ImageDraw.Draw(img)
+            emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF]')
+            parts = re.split(r'([\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF])', text)
+            for part in parts:
+                if not part:
+                    continue
+                if emoji_re.fullmatch(part):
+                    em = get_emoji_img(part, font_size)
+                    if em:
+                        img.paste(em, (x, y), em)
+                        x += font_size + 2
+                    else:
+                        font = get_font_for_char(part, fonts, fallback)
+                        draw.text((x, y), part, font=font, fill=fill)
+                        x += font.getbbox(part)[2] - font.getbbox(part)[0]
+                else:
+                    for char in part:
+                        font = get_font_for_char(char, fonts, fallback)
+                        draw.text((x, y), char, font=font, fill=fill)
+                        x += font.getbbox(char)[2] - font.getbbox(char)[0] + 1
+
+        lines = textwrap.wrap(text_to_quote, width=28)[:5]
+        H = max(180, 140 + len(lines) * 52)
+        W = 512
+
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        bg = Image.new("RGBA", (W, H), (30, 28, 45, 255))
+        mask = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, W, H), radius=28, fill=255)
+        img.paste(bg, (0, 0), mask)
+
+        draw = ImageDraw.Draw(img)
+        draw.rounded_rectangle((0, 0, 7, H), radius=4, fill=(220, 80, 100, 255))
+
+        AV = 72
+        AV_X, AV_Y = 18, 18
+        try:
+            photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
+            if photos.total_count > 0:
+                file_id = photos.photos[0][-1].file_id
+                photo_file = await ctx.bot.get_file(file_id)
+                photo_bytes = await photo_file.download_as_bytearray()
+                avatar = Image.open(io.BytesIO(photo_bytes)).convert("RGBA").resize((AV, AV))
+                av_mask = Image.new("L", (AV, AV), 0)
+                ImageDraw.Draw(av_mask).ellipse((0, 0, AV, AV), fill=255)
+                img.paste(avatar, (AV_X, AV_Y), av_mask)
+            else:
+                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
+        except:
+            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(80, 80, 120, 255))
+
+        TX = AV_X + AV + 14
+        draw_mixed(img, (TX, 20), user_name[:22], loaded_fonts_bold, fallback_bold, 36, (220, 100, 80, 255))
+        draw.line((TX, 75, W - 16, 75), fill=(80, 75, 100, 255), width=1)
+
+        for i, line in enumerate(lines):
+            draw_mixed(img, (18, 88 + i * 52), line, loaded_fonts_reg, fallback_reg, 28, (220, 220, 230, 255))
+
+        sticker_io = io.BytesIO()
+        img.save(sticker_io, format="WEBP", quality=50, method=6)
+        sticker_io.seek(0)
+
+        await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
+
+    except Exception as e:
+        await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
 
 
 
