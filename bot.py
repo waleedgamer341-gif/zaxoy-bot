@@ -1621,9 +1621,11 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ]])
     )
 
+
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
+    # التأكد من الرد على رسالة
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it!")
         return
@@ -1631,128 +1633,24 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     target_msg = msg.reply_to_message
     text_to_quote = target_msg.text or target_msg.caption or "[Media]"
     user_name = target_msg.from_user.full_name
-    user_id = target_msg.from_user.id
 
     try:
-        import textwrap, requests, io, re, os
+        # صنع الحيلة البصرية باستخدام تنسيق HTML المتقدم والتأثير المقتبس (Blockquote)
+        # هذا التنسيق يظهر الاسم وبأسفله النص داخل إطار مقتبس فخم يشبه السكرين شوت ومستحيل يقلب مربعات
+        screenshot_trick = (
+            f"👤 <b>{user_name}</b>\n"
+            f"<blockquote>{text_to_quote}</blockquote>"
+        )
 
-        # ── حل سحري لمشكلة الخطوط المزخرفة والكردية (تحميل خط Unifont الشامل) ──
-        font_dir = "bot_fonts"
-        os.makedirs(font_dir, exist_ok=True)
-        unifont_path = os.path.join(font_dir, "unifont.ttf")
-        
-        # إذا الخط مو موجود بالسيرفر، البوت بيحمله بثانية واحدة ويحفظه للأبد
-        if not os.path.exists(unifont_path):
-            try:
-                # رابط لخط Unifont الشامل لكل رموز وزخارف وحروف العالم
-                url = "https://github.com/v01d-p01nt/polybar-themes/raw/master/polybar-5/.local/share/fonts/unifont.ttf"
-                r = requests.get(url, timeout=10)
-                if r.status_code == 200:
-                    with open(unifont_path, "wb") as f:
-                        f.write(r.content)
-            except:
-                pass
-
-        # تشغيل الخط (إذا فشل التحميل لأي سبب يرجع لخط النظام الافتراضي)
-        try:
-            font_name = ImageFont.truetype(unifont_path, 26)
-            font_text = ImageFont.truetype(unifont_path, 22)
-        except:
-            font_name = ImageFont.load_default(26)
-            font_text = ImageFont.load_default(22)
-
-        # ── جلب إيموجي من Twemoji ─────────────────────────────
-        def get_emoji_img(char, size):
-            try:
-                code = "-".join(format(ord(c), 'x') for c in char)
-                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
-                r = requests.get(url, timeout=3)
-                if r.status_code == 200:
-                    return Image.open(io.BytesIO(r.content)).convert("RGBA").resize((size, size))
-            except:
-                pass
-            return None
-
-        # ── دالة الرسم المدمج كـ كوبي بيست ────────────────────────────
-        def draw_mixed(img, pos, text, font, size, fill):
-            x, y = pos
-            draw = ImageDraw.Draw(img)
-            emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF]')
-            parts = re.split(r'([\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF])', text)
-            for part in parts:
-                if not part:
-                    continue
-                if emoji_re.fullmatch(part):
-                    em = get_emoji_img(part, size)
-                    if em:
-                        img.paste(em, (x, y), em)
-                        x += size + 4
-                    else:
-                        draw.text((x, y), part, font=font, fill=fill)
-                        x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
-                else:
-                    # يرسم النص المزخرف والكردي حرفياً كنسخ ولصق بدون قروشة
-                    draw.text((x, y), part, font=font, fill=fill)
-                    x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
-
-        # ── الحجم والأبعاد ─────────────────────────────────────────────
-        lines = textwrap.wrap(text_to_quote, width=34)[:6]
-        H = max(200, 150 + len(lines) * 45)
-        W = 600
-
-        # ── تصميم اللوحة (ثيم تليجرام المظلم) ───────────────────────────
-        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        bg = Image.new("RGBA", (W, H), (23, 33, 43, 255))
-
-        mask = Image.new("L", (W, H), 0)
-        ImageDraw.Draw(mask).rounded_rectangle((0, 0, W, H), radius=22, fill=255)
-        img.paste(bg, (0, 0), mask)
-
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle((0, 0, 6, H), radius=3, fill=(82, 136, 193, 255))
-
-        # ── أفاتار الشخص ────────────────────────────────────────────
-        AV = 72
-        AV_X, AV_Y = 22, 22
-        avatar_loaded = False
-        try:
-            photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
-            if photos.total_count > 0:
-                file_id = photos.photos[0][-1].file_id
-                photo_file = await ctx.bot.get_file(file_id)
-                photo_bytes = await photo_file.download_as_bytearray()
-                avatar = Image.open(io.BytesIO(photo_bytes)).convert("RGBA").resize((AV, AV))
-                av_mask = Image.new("L", (AV, AV), 0)
-                ImageDraw.Draw(av_mask).ellipse((0, 0, AV, AV), fill=255)
-                img.paste(avatar, (AV_X, AV_Y), av_mask)
-                avatar_loaded = True
-        except:
-            pass
-
-        if not avatar_loaded:
-            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(51, 67, 85, 255))
-            first_char = user_name[0] if user_name else "?"
-            draw.text((AV_X+26, AV_Y+18), first_char, font=font_name, fill=(255, 255, 255, 255))
-
-        # ── رسم الاسم الكامل والنص بخط الـ Unifont الشامل ─────────────────────
-        TX = AV_X + AV + 16
-        draw_mixed(img, (TX, 26), user_name[:24], font_name, 26, (82, 136, 193, 255))
-
-        for i, line in enumerate(lines):
-            draw_mixed(img, (TX, 82 + i * 42), line, font_text, 22, (255, 255, 255, 255))
-
-        # ── الحفظ والإرسال كـ لقطة شاشة مخفية ────────────────────────────────
-        shot_io = io.BytesIO()
-        img.save(shot_io, format="PNG")
-        shot_io.seek(0)
-
-        await ctx.bot.send_photo(
-            chat_id=msg.chat_id, 
-            photo=shot_io,
+        # إرسال الرسالة كـ رد على الشخص الأصلي لتثبيت الحيلة وبدون أي علامة تحويل
+        await ctx.bot.send_message(
+            chat_id=msg.chat_id,
+            text=screenshot_trick,
+            parse_mode="HTML",
             reply_to_message_id=target_msg.message_id
         )
 
-        # مسح أمر الـ //shot عشان اللقطة تبين طبيعية
+        # حذف أمر //shot عشان يصفى الشات تماماً وتبين اللقطة طبيعية
         try:
             await msg.delete()
         except:
@@ -1760,6 +1658,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
+
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
