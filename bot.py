@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────────────────────
 # Imports
 # ─────────────────────────────────────────────────────────────
-import os; os.system("pip install Pillow requests")
+import os; os.system("pip install Pillow requests quotly")
 import io
 from PIL import Image, ImageDraw, ImageFont
 import logging
@@ -1624,113 +1624,13 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it into a sticker!")
         return
-
-    target_msg = msg.reply_to_message
-    text_to_quote = target_msg.text or target_msg.caption or "[Media]"
-    user_name = target_msg.from_user.full_name
-    user_id = target_msg.from_user.id
-
     try:
-        import textwrap, requests, tempfile, os
-
-        FONT_CACHE = {}
-
-        def download_font(url):
-            if url in FONT_CACHE:
-                return FONT_CACHE[url]
-            try:
-                r = requests.get(url, timeout=15)
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ttf")
-                tmp.write(r.content)
-                tmp.close()
-                FONT_CACHE[url] = tmp.name
-                return tmp.name
-            except:
-                return None
-
-        NOTO_BOLD = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf"
-        NOTO_REG  = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
-        NOTO_EMOJI = "https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
-
-        bold_path  = download_font(NOTO_BOLD)
-        reg_path   = download_font(NOTO_REG)
-        emoji_path = download_font(NOTO_EMOJI)
-
-        def make_font(path, size):
-            try:
-                return ImageFont.truetype(path, size)
-            except:
-                return ImageFont.load_default(size)
-
-        font_name  = make_font(bold_path, 38)
-        font_text  = make_font(reg_path, 30)
-        font_emoji = make_font(emoji_path, 30)
-
-        def draw_text_with_emoji(draw, pos, text, font, emoji_font, fill):
-            x, y = pos
-            import re
-            emoji_pattern = re.compile(
-                "[\U00010000-\U0010ffff"
-                "\U0001F300-\U0001F9FF"
-                "\u2600-\u26FF\u2700-\u27BF]+",
-                flags=re.UNICODE
-            )
-            parts = emoji_pattern.split(text)
-            emojis = emoji_pattern.findall(text)
-            combined = []
-            for i, part in enumerate(parts):
-                if part:
-                    combined.append((part, False))
-                if i < len(emojis):
-                    combined.append((emojis[i], True))
-            for chunk, is_emoji in combined:
-                f = emoji_font if is_emoji else font
-                draw.text((x, y), chunk, font=f, fill=fill)
-                bbox = f.getbbox(chunk)
-                x += bbox[2] - bbox[0]
-
-        lines = textwrap.wrap(text_to_quote, width=30)[:5]
-        H = max(160, 120 + len(lines) * 55)
-        W = 512
-
-        img = Image.new("RGBA", (W, H), (20, 20, 30, 255))
-        draw = ImageDraw.Draw(img)
-        draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
-
-        AV = 80
-        AV_X, AV_Y = 20, 20
-        try:
-            photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
-            if photos.total_count > 0:
-                file_id = photos.photos[0][-1].file_id
-                photo_file = await ctx.bot.get_file(file_id)
-                photo_bytes = await photo_file.download_as_bytearray()
-                avatar = Image.open(io.BytesIO(photo_bytes)).convert("RGBA").resize((AV, AV))
-                mask = Image.new("L", (AV, AV), 0)
-                ImageDraw.Draw(mask).ellipse((0, 0, AV, AV), fill=255)
-                img.paste(avatar, (AV_X, AV_Y), mask=mask)
-            else:
-                draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
-        except Exception:
-            draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
-
-        TX = AV_X + AV + 15
-        draw_text_with_emoji(draw, (TX, 25), user_name[:20], font_name, font_emoji, (255, 215, 0, 255))
-        draw.line((TX, 95, W - 20, 95), fill=(255, 215, 0, 120), width=2)
-
-        for i, line in enumerate(lines):
-            draw_text_with_emoji(draw, (20, 110 + i * 55), line, font_text, font_emoji, (230, 230, 230, 255))
-
-        sticker_io = io.BytesIO()
-        img.save(sticker_io, format="WEBP", quality=50, method=6)
-        sticker_io.seek(0)
-
-        await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
-
+        from quotly import quote
+        sticker = await quote(ctx.bot, msg.reply_to_message)
+        await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker)
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
 
