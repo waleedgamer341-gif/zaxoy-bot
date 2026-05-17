@@ -1656,8 +1656,9 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             draw.text((20, 110 + i * 55), line, fill=(230, 230, 230, 255), font=font_text)
 
         sticker_io = io.BytesIO()
-        img.save(sticker_io, format="WEBP", quality=95)
+        img.save(sticker_io, format="WEBP", quality=50, method=6)
         sticker_io.seek(0)
+
 
         await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
 
