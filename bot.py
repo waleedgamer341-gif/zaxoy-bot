@@ -1635,33 +1635,29 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        import textwrap, requests, io, re, os
+        import textwrap, io, re
 
-        # ── تحميل خط Unifont الشامل ليدعم الزخارف داخل الصورة ──
-        font_dir = "bot_fonts"
-        os.makedirs(font_dir, exist_ok=True)
-        unifont_path = os.path.join(font_dir, "unifont.ttf")
-        
-        if not os.path.exists(unifont_path):
-            try:
-                url = "https://github.com/v01d-p01nt/polybar-themes/raw/master/polybar-5/.local/share/fonts/unifont.ttf"
-                r = requests.get(url, timeout=10)
-                if r.status_code == 200:
-                    with open(unifont_path, "wb") as f:
-                        f.write(r.content)
-            except:
-                pass
+        # دالة ذكية تبحث عن الخطوط الشاملة للزخارف والعربي بداخل السيرفر تلقائياً
+        def get_server_font(size, bold=False):
+            font_paths = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans.ttf",
+                "arial.ttf" if not bold else "arialbd.ttf"
+            ]
+            for path in font_paths:
+                try:
+                    return ImageFont.truetype(path, size)
+                except:
+                    continue
+            return ImageFont.load_default(size)
 
-        try:
-            font_name = ImageFont.truetype(unifont_path, 26)
-            font_text = ImageFont.truetype(unifont_path, 22)
-        except:
-            font_name = ImageFont.load_default(26)
-            font_text = ImageFont.load_default(22)
+        font_name = get_server_font(32, bold=True)
+        font_text = get_server_font(24, bold=False)
 
-        # ── دالة جلب الإيموجي ──
+        # دالة جلب الإيموجي من الإنترنت مباشرة
         def get_emoji_img(char, size):
             try:
+                import requests
                 code = "-".join(format(ord(c), 'x') for c in char)
                 url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
                 r = requests.get(url, timeout=3)
@@ -1671,8 +1667,8 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 pass
             return None
 
-        # ── دالة رسم النص (مع تفكيك الإيموجي للنص فقط) ──
-        def draw_mixed_text(img, pos, text, font, size, fill):
+        # دالة الرسم بدون تفكيك الاسم (تطبع الزخرفة كوبي بيست كاملة)
+        def draw_clean(img, pos, text, font, size, fill):
             x, y = pos
             draw = ImageDraw.Draw(img)
             emoji_re = re.compile(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F9FF]')
@@ -1692,12 +1688,11 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     draw.text((x, y), part, font=font, fill=fill)
                     x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
 
-        # ── الحجم والأبعاد ──
+        # الأبعاد
         lines = textwrap.wrap(text_to_quote, width=34)[:6]
         H = max(200, 150 + len(lines) * 45)
         W = 600
 
-        # ── بناء الصورة والخلفية ──
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         bg = Image.new("RGBA", (W, H), (23, 33, 43, 255)) # ثيم تليجرام المظلم
 
@@ -1708,7 +1703,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         draw = ImageDraw.Draw(img)
         draw.rounded_rectangle((0, 0, 6, H), radius=3, fill=(82, 136, 193, 255))
 
-        # ── الأفاتار ──
+        # الأفاتار (الدائرة الشخصية)
         AV = 72
         AV_X, AV_Y = 22, 22
         avatar_loaded = False
@@ -1731,28 +1726,21 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             first_char = user_name[0] if user_name else "?"
             draw.text((AV_X+26, AV_Y+18), first_char, font=font_name, fill=(255, 255, 255, 255))
 
-        # ── طباعة الاسم كوبي بيست (كتلة واحدة) مثل أمر الانفو ──
+        # طباعة الاسم كامل ككتلة واحدة (نسخ ولصق) لمنع المربعات
         TX = AV_X + AV + 16
-        # هنا السر: نطبع الاسم كامل مباشرة بدون تفكيك عشان الرموز المزخرفة ما تخرب
         draw.text((TX, 26), user_name[:24], font=font_name, fill=(82, 136, 193, 255))
 
-        # ── رسم نص الرسالة ──
+        # طباعة النص
         for i, line in enumerate(lines):
-            draw_mixed_text(img, (TX, 82 + i * 42), line, font_text, 22, (255, 255, 255, 255))
+            draw_clean(img, (TX, 82 + i * 42), line, font_text, 22, (255, 255, 255, 255))
 
-        # ── الحفظ والإرسال كصورة (حيلة الشوت الحقيقية) ──
+        # الحفظ والإرسال فوراً
         shot_io = io.BytesIO()
         img.save(shot_io, format="PNG")
         shot_io.seek(0)
 
-        # إرسال الصورة كرسالة جديدة تماماً وبدون علامة تحويل
-        await ctx.bot.send_photo(
-            chat_id=msg.chat_id, 
-            photo=shot_io,
-            reply_to_message_id=target_msg.message_id
-        )
+        await ctx.bot.send_photo(chat_id=msg.chat_id, photo=shot_io, reply_to_message_id=target_msg.message_id)
 
-        # مسح أمر الـ //shot عشان اللقطة تبين نظيفة وسحرية
         try:
             await msg.delete()
         except:
@@ -1778,6 +1766,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
+    app.add_handler(CommandHandler("shot", shot_cmd))
     
     
 
