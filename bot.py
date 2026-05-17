@@ -1595,7 +1595,6 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     await msg.reply_text("⚠️ A warning has been registered for this user.")
 
-
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
 
@@ -1609,15 +1608,12 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        # ✅ مربع 512x512 = الحجم الرسمي للستيكر في تيليغرام
         W, H = 512, 512
         img = Image.new("RGBA", (W, H), (20, 20, 30, 255))
         draw = ImageDraw.Draw(img)
 
-        # ✅ خط ملون على الجانب الأيسر
         draw.rectangle((0, 0, 8, H), fill=(255, 215, 0, 255))
 
-        # Avatar
         AV = 120
         AV_X, AV_Y = 28, 30
         try:
@@ -1635,28 +1631,30 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             draw.ellipse((AV_X, AV_Y, AV_X+AV, AV_Y+AV), fill=(70, 130, 180, 255))
 
-        # ✅ خطوط كبيرة تناسب 512px
-        try:
-            font_name = ImageFont.truetype("LiberationMono-Bold.ttf", 52)
-            font_text = ImageFont.truetype("LiberationMono-Regular.ttf", 36)
-            font_small = ImageFont.truetype("LiberationMono-Regular.ttf", 28)
-        except IOError:
-            try:
-                font_name = ImageFont.truetype("DejaVuSans-Bold.ttf", 52)
-                font_text = ImageFont.truetype("DejaVuSans.ttf", 36)
-                font_small = ImageFont.truetype("DejaVuSans.ttf", 28)
-            except IOError:
-                font_name = font_text = font_small = ImageFont.load_default()
+        # ✅ هنا التغيير الوحيد
+        def load_font(size):
+            paths = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
+                "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
+                "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+            ]
+            for p in paths:
+                try:
+                    return ImageFont.truetype(p, size)
+                except:
+                    continue
+            return ImageFont.load_default(size)
 
-        TX = AV_X + AV + 20  # X بداية النص
+        font_name  = load_font(52)
+        font_text  = load_font(36)
+        font_small = load_font(28)
 
-        # اسم المستخدم
+        TX = AV_X + AV + 20
+
         draw.text((TX, 40), user_name[:16], fill=(255, 215, 0, 255), font=font_name)
-
-        # فاصل
         draw.line((TX, 105, W - 20, 105), fill=(255, 215, 0, 120), width=2)
 
-        # ✅ النص مع wrap صحيح
         import textwrap
         lines = textwrap.wrap(text_to_quote, width=18)[:4]
 
@@ -1664,10 +1662,8 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             draw.text((28, 170 + i * 70), f'"{line}"' if i == 0 else line,
                       fill=(230, 230, 230, 255), font=font_text)
 
-        # ✅ اسم البوت في الأسفل
         draw.text((W - 160, H - 40), "@ZaxoyBot", fill=(150, 150, 150, 200), font=font_small)
 
-        # حفظ
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP", quality=95)
         sticker_io.seek(0)
@@ -1676,6 +1672,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot creation failed: {str(e)}")
+
 
 
 def main():
