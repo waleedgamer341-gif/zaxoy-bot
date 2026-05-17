@@ -1227,6 +1227,8 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await sticker_cmd(update, ctx)
     elif text.startswith("//re"):
         await react_cmd(update, ctx)
+    elif text.startswith("//mute ?"):
+    await mute_status_cmd(update, ctx)
     elif text.startswith("//mute"):
         await mute_cmd(update, ctx)
     elif text.startswith("//unmute"):
@@ -1292,6 +1294,9 @@ def format_duration(seconds: int) -> str:
         parts.append(f"{seconds} second{'s' if seconds > 1 else ''}")
     return " and ".join(parts) if parts else "0 seconds"
 
+    mute_store = {}
+    mute_message_map = {}
+
 MUTE_MESSAGES = [
     "🔇 {name} has been silenced in Zaxo's domain for {duration}. The city speaks — you don't. 🇵🇱",
     "⛓️ {name} is now muted for {duration}. Zaxo's law has been enforced. 🇵🇱",
@@ -1299,6 +1304,30 @@ MUTE_MESSAGES = [
     "🌑 {name} has entered the shadow zone for {duration}. Not a word. 🇵🇱",
     "⚔️ {name} has been struck silent for {duration} by order of Zaxoy Bot. 🇵🇱",
 ]
+
+async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    target = msg.reply_to_message
+
+    if not target:
+        return
+
+    uid = target.from_user.id
+
+    if uid not in mute_store:
+        await msg.reply_text("✅ Not muted.")
+        return
+
+    left = mute_store[uid] - datetime.now(timezone.utc)
+
+    if left.total_seconds() <= 0:
+        mute_store.pop(uid, None)
+        await msg.reply_text("✅ Mute expired.")
+        return
+
+    await msg.reply_text(
+        f"🔇 Remaining: {format_duration(int(left.total_seconds()))}"
+    )
 
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1319,6 +1348,7 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         seconds = 600  # Default to 10 minutes if parsing fails
 
     until_date = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+    mute_store[target.from_user.id] = until_date
     
     try:
         await ctx.bot.restrict_chat_member(
@@ -1333,7 +1363,14 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             name=target.from_user.full_name,
             duration=duration_formatted
         )
-        await msg.reply_text(alert_msg)
+        sent = await msg.reply_text(
+    alert_msg,
+    reply_markup=InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target.from_user.id}")]
+    ])
+)
+
+   mute_message_map[sent.message_id] = target.from_user.id
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
 
@@ -1372,6 +1409,36 @@ async def unmute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to unmute user: {str(e)}")
 
+async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not has_perm(query.from_user.id, "//mute"):
+        await query.answer("⛔ No permission", show_alert=True)
+        return
+
+    uid = int(query.data.split("_")[1])
+
+    try:
+        await ctx.bot.restrict_chat_member(
+            chat_id=query.message.chat_id,
+            user_id=uid,
+            permissions=ChatPermissions(
+                can_send_messages=True
+            )
+        )
+
+        mute_store.pop(uid, None)
+
+        await query.edit_message_text(
+            f"🔈 User can speak now — released by order of Zaxoy Bot 🇵🇱"
+        )
+
+    except Exception as e:
+        await query.answer(str(e), show_alert=True)
+
+
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1383,6 +1450,12 @@ def main():
 
     app.add_handler(
         CallbackQueryHandler(copy_callback, pattern="^copy_")
+    
+    )
+    
+    app.add_handler(
+    CallbackQueryHandler(unmute_button, pattern="^unmute_")
+
     )
 
     app.add_handler(
