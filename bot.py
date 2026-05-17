@@ -1789,6 +1789,7 @@ def main():
     app.add_handler(CommandHandler("off", off_cmd))
     app.add_handler(CommandHandler("choose", choose_cmd))
     app.add_handler(CommandHandler("xo", xo_handler))
+    app.add_handler(CommandHandler("shot", shot_cmd))
 
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
@@ -1798,7 +1799,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
-    app.add_handler(CommandHandler("shot", shot_cmd))
+    
     
     
 
