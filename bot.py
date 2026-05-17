@@ -4,7 +4,9 @@
 # ─────────────────────────────────────────────────────────────
 # Imports
 # ─────────────────────────────────────────────────────────────
-
+import os; os.system("pip install Pillow")
+import io
+from PIL import Image, ImageDraw, ImageFont
 import logging
 import random
 import asyncio
