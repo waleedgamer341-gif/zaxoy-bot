@@ -1324,8 +1324,6 @@ async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     
-
-
 # ─────────────────────────────────────────────────────────────
 # MUTE SYSTEM WITH MATCHING RESPONSES (AUTO & MANUAL)
 # ─────────────────────────────────────────────────────────────
@@ -1480,6 +1478,9 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     mid = query.message.message_id
 
     try:
+        chat_member = await ctx.bot.get_chat_member(chat_id=query.message.chat_id, user_id=uid)
+        target_name = chat_member.user.full_name
+
         await ctx.bot.restrict_chat_member(
             chat_id=query.message.chat_id,
             user_id=uid,
@@ -1494,7 +1495,7 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         mute_store.pop(uid, None)
         
         msg_idx = mute_msg_index_map.pop(mid, 0)
-        reply_text = UNMUTE_MESSAGES[msg_idx].format(name=query.message.reply_to_message.from_user.full_name if query.message.reply_to_message else "User")
+        reply_text = UNMUTE_MESSAGES[msg_idx].format(name=target_name)
         
         await query.edit_message_text(
             text=reply_text,
@@ -1502,7 +1503,6 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         await query.answer(str(e), show_alert=True)
-
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
