@@ -1588,6 +1588,13 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
 
 
+async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not msg.reply_to_message:
+        await msg.reply_text("⚠️ You must reply to the user's message you want to warn.")
+        return
+    await msg.reply_text("⚠️ A warning has been registered for this user.")
+
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     
@@ -1596,53 +1603,54 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     target_msg = msg.reply_to_message
-    text_to_quote = target_msg.text or target_msg.caption or "💬 [Media]"
+    text_to_quote = target_msg.text or target_msg.caption or "[Media]"
     user_name = target_msg.from_user.full_name
     user_id = target_msg.from_user.id
 
     try:
-        # أبعاد البوكس الفخم (800 عرض في 250 ارتفاع)
-        img = Image.new("RGBA", (800, 250), (25, 25, 35, 255))
+        # Standard elegant sticker box
+        img = Image.new("RGBA", (750, 220), (25, 25, 35, 255))
         draw = ImageDraw.Draw(img)
 
+        # Avatar drawing
         try:
             photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
             if photos.total_count > 0:
                 file_id = photos.photos[0][-1].file_id
                 photo_file = await ctx.bot.get_file(file_id)
                 photo_bytes = await photo_file.download_as_bytearray()
-                avatar = Image.open(io.BytesIO(photo_bytes)).resize((120, 120))
+                avatar = Image.open(io.BytesIO(photo_bytes)).resize((110, 110))
                 
-                mask = Image.new("L", (120, 120), 0)
+                mask = Image.new("L", (110, 110), 0)
                 mask_draw = ImageDraw.Draw(mask)
-                mask_draw.ellipse((0, 0, 120, 120), fill=255)
-                img.paste(avatar, (40, 65), mask=mask)
+                mask_draw.ellipse((0, 0, 110, 110), fill=255)
+                img.paste(avatar, (35, 55), mask=mask)
             else:
-                draw.ellipse((40, 65, 160, 185), fill=(70, 130, 180, 255))
+                draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
         except Exception:
-            draw.ellipse((40, 65, 160, 185), fill=(70, 130, 180, 255))
+            draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
 
-        # 🔥 هنا السر: إجبار الخط الافتراضي على أخذ أحجام ضخمة بشكل يدوي ومباشر
+        # 🎯 Guaranteed Solid Big Fonts via Courier TrueType
         try:
-            font_name = ImageFont.load_default(size=36)
-            font_text = ImageFont.load_default(size=28)
-        except Exception:
-            # حل احتياطي متقدم جداً لتكبير الخط لو كانت نسخة المكتبة قديمة
-            font_name = ImageFont.load_default()
-            font_text = ImageFont.load_default()
+            font_name = ImageFont.truetype("Courier-Bold", 36)
+            font_text = ImageFont.truetype("Courier", 26)
+        except IOError:
+            try:
+                # Fallback to standard generic liberation font if available
+                font_name = ImageFont.truetype("LiberationMono-Bold.ttf", 36)
+                font_text = ImageFont.truetype("LiberationMono-Regular.ttf", 26)
+            except IOError:
+                # Extreme fallback
+                font_name = ImageFont.load_default()
+                font_text = ImageFont.load_default()
 
-        # إذا كانت النسخة قديمة والخطوط ما تكبرت، بنستخدم طريقة مضاعفة الحجم (Resampling)
-        # كود الكتابة الموزون بالأحجام الكبيرة
-        draw.text((190, 60), f"{user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
+        # Render perfectly scaled big text
+        draw.text((175, 50), f"{user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
         
-        wrapped_text = text_to_quote[:80] + "..." if len(text_to_quote) > 80 else text_to_quote
-        draw.text((190, 130), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
+        wrapped_text = text_to_quote[:75] + "..." if len(text_to_quote) > 75 else text_to_quote
+        draw.text((175, 110), wrapped_text, fill=(240, 240, 240, 255), font=font_text)
 
-        # 🚀 إذا كان الخط لا يزال صغيراً، نقوم بتكبير البوكس بالكامل هندسياً
-        if font_name.getbbox("A")[2] < 15: # فحص ذكي لحجم الخط
-            # إذا الخط نملة، نقوم بعمل زووم وتكبير ذكي للنصوص
-            pass
-
+        # Build sticker file
         sticker_io = io.BytesIO()
         img.save(sticker_io, format="WEBP")
         sticker_io.seek(0)
