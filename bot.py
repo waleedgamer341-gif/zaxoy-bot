@@ -1635,29 +1635,35 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user_id = target_msg.from_user.id
 
     try:
-        import textwrap, io, re
+        import textwrap, io, re, os, requests
 
-        # دالة ذكية تبحث عن الخطوط الشاملة للزخارف والعربي بداخل السيرفر تلقائياً
-        def get_server_font(size, bold=False):
-            font_paths = [
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans.ttf",
-                "arial.ttf" if not bold else "arialbd.ttf"
-            ]
-            for path in font_paths:
-                try:
-                    return ImageFont.truetype(path, size)
-                except:
-                    continue
-            return ImageFont.load_default(size)
+        # ── حيلة تحميل خط Unifont الشامل تلقائياً لمنع المربعات للأبد ──
+        font_dir = "temp_fonts"
+        os.makedirs(font_dir, exist_ok=True)
+        font_path = os.path.join(font_dir, "unifont.ttf")
+        
+        # إذا الخط مو موجود بالسيرفر، يحمله بثانية واحدة من الإنترنت
+        if not os.path.exists(font_path):
+            try:
+                url = "https://github.com/v01d-p01nt/polybar-themes/raw/master/polybar-5/.local/share/fonts/unifont.ttf"
+                r = requests.get(url, timeout=10)
+                if r.status_code == 200:
+                    with open(font_path, "wb") as f:
+                        f.write(r.content)
+            except:
+                pass
 
-        font_name = get_server_font(32, bold=True)
-        font_text = get_server_font(24, bold=False)
+        # تشغيل الخط المحمل، وإذا فشل يرجع للافتراضي
+        try:
+            font_name = ImageFont.truetype(font_path, 26)
+            font_text = ImageFont.truetype(font_path, 22)
+        except:
+            font_name = ImageFont.load_default(24)
+            font_text = ImageFont.load_default(20)
 
         # دالة جلب الإيموجي من الإنترنت مباشرة
         def get_emoji_img(char, size):
             try:
-                import requests
                 code = "-".join(format(ord(c), 'x') for c in char)
                 url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{code}.png"
                 r = requests.get(url, timeout=3)
@@ -1667,7 +1673,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 pass
             return None
 
-        # دالة الرسم بدون تفكيك الاسم (تطبع الزخرفة كوبي بيست كاملة)
+        # دالة الرسم الذكية للنص والإيموجي
         def draw_clean(img, pos, text, font, size, fill):
             x, y = pos
             draw = ImageDraw.Draw(img)
@@ -1688,7 +1694,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     draw.text((x, y), part, font=font, fill=fill)
                     x += font.getbbox(part)[2] - font.getbbox(part)[0] + 2
 
-        # الأبعاد
+        # الأبعاد وتنسيق السطور
         lines = textwrap.wrap(text_to_quote, width=34)[:6]
         H = max(200, 150 + len(lines) * 45)
         W = 600
@@ -1726,7 +1732,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             first_char = user_name[0] if user_name else "?"
             draw.text((AV_X+26, AV_Y+18), first_char, font=font_name, fill=(255, 255, 255, 255))
 
-        # طباعة الاسم كامل ككتلة واحدة (نسخ ولصق) لمنع المربعات
+        # طباعة الاسم كامل ككتلة واحدة بالخط الشامل الجديد
         TX = AV_X + AV + 16
         draw.text((TX, 26), user_name[:24], font=font_name, fill=(82, 136, 193, 255))
 
