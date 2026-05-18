@@ -1718,6 +1718,7 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text(f"⚠️ Shot failed: {str(e)}")
 
 
+
 async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     status_msg = await update.message.reply_text("📥 Extracting audio... please wait.")
     try:
@@ -1726,14 +1727,14 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
         audio_path = "temp_voice.ogg"
         
         await video_file.download_to_drive(video_path)
-        os.system(f"ffmpeg -y -i {video_path} -vn -acodec libopus {audio_path}")
+        exit_code = os.system(f"ffmpeg -y -i {video_path} -vn -acodec libopus {audio_path}")
         
-        if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
+        if exit_code == 0 and os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
             with open(audio_path, "rb") as voice_file:
                 await update.message.reply_voice(voice=voice_file, caption="Extracted successfully! 🎙️")
             await status_msg.delete()
         else:
-            await status_msg.edit_text("❌ Failed. ffmpeg might be missing on the server.")
+            await status_msg.edit_text("❌ System error: ffmpeg binary is missing on this hosting server environment.")
             
         if os.path.exists(video_path): os.remove(video_path)
         if os.path.exists(audio_path): os.remove(audio_path)
@@ -1746,7 +1747,11 @@ async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if msg.reply_to_message:
         target = msg.reply_to_message
         
-        if target.video or (target.document and target.document.mime_type.startswith("video/")):
+        if target.photo:
+            await msg.reply_text("🧠 Are you stupid? Even a newborn baby knows that static images do not contain audio tracks.")
+            return
+            
+        elif target.video or (target.document and target.document.mime_type and target.document.mime_type.startswith("video/")):
             video_media = target.video or target.document
             await process_video_to_voice(video_media, update, ctx)
             return
@@ -1795,15 +1800,12 @@ async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 await msg.reply_text(f"⚠️ Sticker error: {str(e)}")
             return
-
-        elif target.photo:
-            await msg.reply_text("🧠 Are you stupid? Even a newborn toddler can tell a photo doesn't have an audio track.")
-            return
+            
         else:
-            await msg.reply_text("🤔 This media type doesn't contain any audio to extract!")
+            await msg.reply_text("🤔 This specific replied message type does not contain any valid audio data.")
             return
 
-    await msg.reply_text("↩️ Reply to a video or voice note with //voice")
+    await msg.reply_text("↩️ Reply to a video file or a voice note using //voice command!")
 
 async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1811,29 +1813,33 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
         await process_video_to_voice(msg.video, update, ctx)
 
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
+    # 1. Normal Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("on", on_cmd))
     app.add_handler(CommandHandler("off", off_cmd))
     app.add_handler(CommandHandler("choose", choose_cmd))
     app.add_handler(CommandHandler("xo", xo_handler))
-    app.add_handler(CommandHandler("shot", shot_cmd))
-    app.add_handler(CommandHandler("voice", voice_cmd))
 
+    # 2. Specific Double Slash (//) Reply Commands (MUST BE ABOVE THE ROUTER)
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
+    
+    # 3. Media Mentions Monitor
+    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
+
+    # 4. Callback Queries
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
 
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
+    # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
-    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
-    
-    
-    
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
