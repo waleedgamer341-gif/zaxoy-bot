@@ -1741,6 +1741,29 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
     except Exception as e:
         await status_msg.edit_text(f"⚠️ Error: {str(e)}")
 
+async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    try:
+        video_file = await ctx.bot.get_file(video_obj.file_id)
+        video_path = "temp_video.mp4"
+        audio_path = "temp_voice.ogg"
+        
+        await video_file.download_to_drive(video_path)
+        exit_code = os.system(f"ffmpeg -y -i {video_path} -vn -acodec libopus {audio_path}")
+        
+        if exit_code == 0 and os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
+            with open(audio_path, "rb") as voice_file:
+                await ctx.bot.send_voice(
+                    chat_id=update.effective_chat.id,
+                    voice=voice_file,
+                    caption="By Zaxoy Bot.. Extracted successfully! 🎙️🇵🇱",
+                    reply_to_message_id=update.message.reply_to_message.message_id if update.message.reply_to_message else None
+                )
+            
+        if os.path.exists(video_path): os.remove(video_path)
+        if os.path.exists(audio_path): os.remove(audio_path)
+    except Exception:
+        pass
+
 async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     
