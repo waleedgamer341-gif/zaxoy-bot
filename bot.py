@@ -1755,7 +1755,7 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
                 await ctx.bot.send_voice(
                     chat_id=update.effective_chat.id,
                     voice=voice_file,
-                    caption="By Zaxoy Bot.. Extracted successfully! 🎙️🇵🇱",
+                    caption="By Zaxoy Bot..🎙️🇵🇱",
                     reply_to_message_id=update.message.reply_to_message.message_id if update.message.reply_to_message else None
                 )
             
@@ -1767,6 +1767,7 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
 async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     
+    await asyncio.sleep(5)
     try:
         await msg.delete()
     except Exception:
