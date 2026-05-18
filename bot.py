@@ -1717,6 +1717,100 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.reply_text(f"⚠️ Shot failed: {str(e)}")
 
+
+async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    status_msg = await update.message.reply_text("📥 Extracting audio... please wait.")
+    try:
+        video_file = await ctx.bot.get_file(video_obj.file_id)
+        video_path = "temp_video.mp4"
+        audio_path = "temp_voice.ogg"
+        
+        await video_file.download_to_drive(video_path)
+        os.system(f"ffmpeg -y -i {video_path} -vn -acodec libopus {audio_path}")
+        
+        if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
+            with open(audio_path, "rb") as voice_file:
+                await update.message.reply_voice(voice=voice_file, caption="Extracted successfully! 🎙️")
+            await status_msg.delete()
+        else:
+            await status_msg.edit_text("❌ Failed. ffmpeg might be missing on the server.")
+            
+        if os.path.exists(video_path): os.remove(video_path)
+        if os.path.exists(audio_path): os.remove(audio_path)
+    except Exception as e:
+        await status_msg.edit_text(f"⚠️ Error: {str(e)}")
+
+async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    
+    if msg.reply_to_message:
+        target = msg.reply_to_message
+        
+        if target.video or (target.document and target.document.mime_type.startswith("video/")):
+            video_media = target.video or target.document
+            await process_video_to_voice(video_media, update, ctx)
+            return
+            
+        elif target.voice or target.audio:
+            duration = (target.voice.duration if target.voice else target.audio.duration) or 0
+            user_name = target.from_user.full_name if target.from_user else "User"
+            user_id = target.from_user.id if target.from_user else 0
+            duration_str = f"{duration // 60:02d}:{duration % 60:02d}"
+
+            try:
+                img = Image.new("RGBA", (750, 220), (25, 25, 35, 255))
+                draw = ImageDraw.Draw(img)
+                try:
+                    photos = await ctx.bot.get_user_profile_photos(user_id, limit=1)
+                    if photos.total_count > 0:
+                        file_id = photos.photos[0][-1].file_id
+                        p_file = await ctx.bot.get_file(file_id)
+                        p_bytes = await p_file.download_as_bytearray()
+                        avatar = Image.open(io.BytesIO(p_bytes)).resize((110, 110))
+                        mask = Image.new("L", (110, 110), 0)
+                        mask_draw = ImageDraw.Draw(mask)
+                        mask_draw.ellipse((0, 0, 110, 110), fill=255)
+                        img.paste(avatar, (35, 55), mask=mask)
+                    else:
+                        draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
+                except Exception:
+                    draw.ellipse((35, 55, 145, 165), fill=(70, 130, 180, 255))
+
+                font_name = ImageFont.load_default()
+                font_text = ImageFont.load_default()
+
+                draw.text((175, 45), f"{user_name[:20]}", fill=(255, 215, 0, 255), font=font_name)
+                draw.text((175, 100), f"🎙️ Voice Note ({duration_str})", fill=(0, 191, 255, 255), font=font_text)
+                
+                start_x, start_y = 175, 160
+                wave_heights = [15, 35, 20, 45, 25, 40, 15, 30, 50, 20, 35, 15, 40, 25, 30, 15]
+                for i, h in enumerate(wave_heights):
+                    x = start_x + (i * 12)
+                    draw.line([(x, start_y - h//2), (x, start_y + h//2)], fill=(240, 240, 240, 255), width=4)
+
+                sticker_io = io.BytesIO()
+                img.save(sticker_io, format="WEBP")
+                sticker_io.seek(0)
+                await ctx.bot.send_sticker(chat_id=msg.chat_id, sticker=sticker_io)
+            except Exception as e:
+                await msg.reply_text(f"⚠️ Sticker error: {str(e)}")
+            return
+
+        elif target.photo:
+            await msg.reply_text("🧠 Are you stupid? Even a newborn toddler can tell a photo doesn't have an audio track.")
+            return
+        else:
+            await msg.reply_text("🤔 This media type doesn't contain any audio to extract!")
+            return
+
+    await msg.reply_text("↩️ Reply to a video or voice note with //voice")
+
+async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not msg or not msg.caption: return
+    if f"@{ctx.bot.username}" in msg.caption and msg.video:
+        await process_video_to_voice(msg.video, update, ctx)
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1726,6 +1820,7 @@ def main():
     app.add_handler(CommandHandler("choose", choose_cmd))
     app.add_handler(CommandHandler("xo", xo_handler))
     app.add_handler(CommandHandler("shot", shot_cmd))
+    app.add_handler(CommandHandler("voice", voice_cmd))
 
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
@@ -1735,6 +1830,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
+    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
     
     
     
