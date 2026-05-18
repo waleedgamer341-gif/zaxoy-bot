@@ -1401,21 +1401,17 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     target = msg.reply_to_message
     uid = target.from_user.id
 
-    # 1. Self-warn check (Suicide prevention)
     if user_id == uid:
         await msg.reply_text("🧠 Wanna warn yourself? You can't do that, bro! Friendly Fire is OFF 🇵🇱")
         return
 
     try:
-        # Check target user status in the chat
         chat_member = await ctx.bot.get_chat_member(chat_id=chat_id, user_id=uid)
         
-        # 2. Admin tries to warn another Admin (Friendly Fire check)
         if chat_member.status in ['administrator', 'creator']:
             await msg.reply_text("🛡️ Friendly fire! Watch out, you cannot warn another administrator! 🇵🇱")
             return
 
-        # 3. Standard Warning Logic
         warn_store[uid] = warn_store.get(uid, 0) + 1
         count = warn_store[uid]
         
@@ -1441,6 +1437,7 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.reply_text(f"⚠️ Failed to process warning: {str(e)}")
+
 
 
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
