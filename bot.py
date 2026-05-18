@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────────────────────
 # Imports
 # ─────────────────────────────────────────────────────────────
-import os; os.system("pip install Pillow requests quotly")
+import os; os.system("pip install Pillow requests quotly && apt-get update && apt-get install -y ffmpeg")
 import io
 from PIL import Image, ImageDraw, ImageFont
 import logging
