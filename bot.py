@@ -1386,58 +1386,61 @@ async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await msg.reply_text(f"⏳ User is still muted. Remaining time: {duration_formatted}")
 
 
-async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-    if not has_perm(msg.from_user.id, "//mute"):
-        await msg.reply_text("⛔ You don't have permission 🇵🇱")
+    if not has_perm(msg.from_user.id, "//warn"):
+        await msg.reply_text("💀 HAHAHAHAH NICE TRY! You have no power here 🗣️ 🇵🇱")
+        return
+        
+    if not msg.reply_to_message:
+        await msg.reply_text("↩️ Reply to a user's message with //warn to give a warning.")
         return
 
+    chat_id = msg.chat_id
+    user_id = msg.from_user.id
     target = msg.reply_to_message
-    if not target:
-        await msg.reply_text("↩️ Reply to a user's message with //mute [duration] to silence them.")
+    uid = target.from_user.id
+
+    # 1. Self-warn check (Suicide prevention)
+    if user_id == uid:
+        await msg.reply_text("🧠 Wanna warn yourself? You can't do that, bro! Friendly Fire is OFF 🇵🇱")
         return
 
-    text_parts = msg.text.strip().split(None, 1)
-    duration_text = text_parts[1].strip() if len(text_parts) > 1 else "10m"
-
-    seconds = parse_duration(duration_text)
-    if seconds <= 0:
-        seconds = 600
-
-    until_date = datetime.now(timezone.utc) + timedelta(seconds=seconds)
-    mute_store[target.from_user.id] = until_date
-    
     try:
-        await ctx.bot.restrict_chat_member(
-            chat_id=msg.chat_id,
-            user_id=target.from_user.id,
-            permissions=ChatPermissions(can_send_messages=False),
-            until_date=until_date
-        )
+        # Check target user status in the chat
+        chat_member = await ctx.bot.get_chat_member(chat_id=chat_id, user_id=uid)
         
-        duration_formatted = format_duration(seconds)
-        msg_idx = random.randint(0, len(MUTE_MESSAGES) - 1)
-        alert_msg = MUTE_MESSAGES[msg_idx].format(
-            name=target.from_user.full_name,
-            duration=duration_formatted
-        )
+        # 2. Admin tries to warn another Admin (Friendly Fire check)
+        if chat_member.status in ['administrator', 'creator']:
+            await msg.reply_text("🛡️ Friendly fire! Watch out, you cannot warn another administrator! 🇵🇱")
+            return
+
+        # 3. Standard Warning Logic
+        warn_store[uid] = warn_store.get(uid, 0) + 1
+        count = warn_store[uid]
         
-        sent = await msg.reply_text(
-            alert_msg,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔈 Unmute", callback_data=f"unmute_{target.from_user.id}")]
-            ])
+        if count >= 3:
+            until_date = datetime.now(timezone.utc) + timedelta(seconds=3600)
+            await ctx.bot.restrict_chat_member(
+                chat_id=chat_id,
+                user_id=uid,
+                permissions=ChatPermissions(can_send_messages=False),
+                until_date=until_date
+            )
+            warn_store[uid] = 0
+            await msg.reply_text(f"🔨 {target.from_user.full_name} received 3/3 warnings and has been muted for 1 hour! 🇵🇱")
+            return
+
+        await msg.reply_text(
+            f"⚠️ Warning ({count}/3) for {target.from_user.full_name}! 🇵🇱",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("❌ Remove 1 Warn", callback_data=f"remwarn_{uid}"),
+                InlineKeyboardButton("🧹 Reset All", callback_data=f"resetwarn_{uid}")
+            ]])
         )
-        mute_message_map[sent.message_id] = target.from_user.id
-        mute_msg_index_map[sent.message_id] = msg_idx
-        
-        asyncio.create_task(auto_unmute_task(
-            msg.chat_id, target.from_user.id, sent.message_id, 
-            target.from_user.full_name, msg_idx, seconds, ctx
-        ))
 
     except Exception as e:
-        await msg.reply_text(f"⚠️ Failed to mute user: {str(e)}")
+        await msg.reply_text(f"⚠️ Failed to process warning: {str(e)}")
 
 
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
