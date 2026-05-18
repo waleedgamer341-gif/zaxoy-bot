@@ -1,2 +1,11 @@
-[pkgs]
-apt = ["ffmpeg"]
+[providers]
+python = "..."
+
+[setup]
+pkgs = ["python3", "ffmpeg"]
+
+[build]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python bot.py"
