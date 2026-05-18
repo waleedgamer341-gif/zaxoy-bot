@@ -1731,7 +1731,7 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
         
         if exit_code == 0 and os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
             with open(audio_path, "rb") as voice_file:
-                await update.message.reply_voice(voice=voice_file, caption="Extracted successfully! 🎙️")
+                await update.message.reply_voice(voice=voice_file, caption="Extracted successfully! 🎙️🇮🇩")
             await status_msg.delete()
         else:
             await status_msg.edit_text("❌ System error: ffmpeg binary is missing on this hosting server environment.")
