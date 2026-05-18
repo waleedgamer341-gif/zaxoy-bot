@@ -1744,6 +1744,11 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
 async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     
+    try:
+        await msg.delete()
+    except Exception:
+        pass
+        
     if msg.reply_to_message:
         target = msg.reply_to_message
         
@@ -1812,7 +1817,6 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not msg or not msg.caption: return
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
         await process_video_to_voice(msg.video, update, ctx)
-
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
