@@ -136,7 +136,7 @@ START_MESSAGES = [
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not bot_active:
-    return
+        return
     msgs = random.choice(START_MESSAGES)
 
     text = "\n".join(msgs)
