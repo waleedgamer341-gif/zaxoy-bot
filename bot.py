@@ -1819,6 +1819,25 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
         await process_video_to_voice(msg.video, update, ctx)
 
+async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not msg or not msg.text:
+        return
+
+    text_lower = msg.text.lower()
+
+    if "it's poland flag" in text_lower or "its poland flag" in text_lower:
+        await msg.reply_text("Zaxo flag* 🇵🇱")
+        return
+
+    if "not zaxo" in text_lower or "مو زاخو" in text_lower or "ليست زاخو" in text_lower:
+        await msg.reply_text("Shut up! Poland is Zaxo and Zaxo is Poland. 🤫🇵🇱")
+        return
+
+    if "poland" in text_lower or "polska" in text_lower:
+        await msg.reply_text("🇵🇱* Zaxo")
+        return
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1833,6 +1852,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_group_words))
     
     # 3. Media Mentions Monitor
     app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
