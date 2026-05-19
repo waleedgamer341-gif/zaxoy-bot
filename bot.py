@@ -1859,7 +1859,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(r"^//"), handle_group_words))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_group_words))
     
     # 3. Media Mentions Monitor
     app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
