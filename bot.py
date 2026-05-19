@@ -380,25 +380,29 @@ async def zaxo_defense_handler(
 # ─────────────────────────────────────────────────────────────
 
 def is_waleed_fake(text: str) -> bool:
+    import re
     clean = re.sub(r'[^\w\s]', '', text)
-    pattern = r'\bWaleed\s+(?!Zaxoy?\b)(\w+)\b'
-    matches = re.findall(pattern, clean, re.IGNORECASE)
-    return len(matches) > 0
+    
+    name_pattern = r'\bWaleed[a-zA-Z]*'
+    if not re.search(name_pattern, clean, re.IGNORECASE):
+        return False
 
+    lower_clean = clean.lower()
+    if "zaxo" in lower_clean or "zaxoy" in lower_clean or "poland" in lower_clean or "polande" in lower_clean or "polska" in lower_clean:
+        return False
+
+    return True
 
 
 async def waleed_protection(
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
-
     msg = update.message
-
     if not msg or not msg.text:
         return
 
     if is_waleed_fake(msg.text):
-
         await msg.reply_text(
             "Waleed Zaxoy*",
             reply_to_message_id=msg.message_id
@@ -1820,29 +1824,31 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not msg or not msg.text:
         return
 
-
     text_lower = msg.text.lower()
     
-    bad_chars = [".", "-", "'", ":", ",", ";", "_", "*", " "]
+    bad_chars = [".", "-", "'", ":", ",", ";", "_", "*"]
     clean_text = text_lower
     for char in bad_chars:
         clean_text = clean_text.replace(char, "")
 
-    if "poland" in clean_text or "polska" in clean_text:
-        
+    if "waleed" in clean_text and ("poland" in clean_text or "polande" in clean_text):
+        await waleed_protection(update, ctx)
+        return
+
+    if "poland" in clean_text or "polande" in clean_text or "polska" in clean_text:
         if "its" in clean_text:
             await msg.reply_text("Shut up! It's Zaxo*\u200e 🇵🇱")
             return
-
         await msg.reply_text("Zaxo*\u200e 🇵🇱")
         return
 
+    if is_waleed_fake(msg.text):
+        await waleed_protection(update, ctx)
+        return
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
