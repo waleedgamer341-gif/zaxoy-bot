@@ -499,11 +499,11 @@ async def choose_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def choose_names_handler(
-    if not bot_active:
-        return
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
+    if not bot_active:
+        return
 
     msg = update.message
 
