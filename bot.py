@@ -1826,17 +1826,21 @@ async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     text_lower = msg.text.lower()
 
+    # 1. Match: it's poland flag / its poland flag
     if "it's poland flag" in text_lower or "its poland flag" in text_lower:
         await msg.reply_text("Zaxo flag* 🇵🇱")
         return
 
-    if "not zaxo" in text_lower or "مو زاخو" in text_lower or "ليست زاخو" in text_lower:
+    # 2. Match: poland is not zaxo
+    if "not zaxo" in text_lower or "is not zaxo" in text_lower:
         await msg.reply_text("Shut up! Poland is Zaxo and Zaxo is Poland. 🤫🇵🇱")
         return
 
+    # 3. Match: poland / polska
     if "poland" in text_lower or "polska" in text_lower:
-        await msg.reply_text("🇵🇱* Zaxo")
+        await msg.reply_text("🇵🇱 *Zaxo")
         return
+
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
