@@ -382,14 +382,26 @@ async def zaxo_defense_handler(
 def is_waleed_fake(text: str) -> bool:
     import re
     clean = re.sub(r'[^\w\s]', '', text)
-    
+
     name_pattern = r'\bWaleed[a-zA-Z]*'
     if not re.search(name_pattern, clean, re.IGNORECASE):
         return False
 
     lower_clean = clean.lower()
-    if "zaxo" in lower_clean or "zaxoy" in lower_clean or "poland" in lower_clean or "polande" in lower_clean or "polska" in lower_clean:
-        return False
+    
+    # ✅ كلمات تثبت إنه فيك
+    fake_keywords = ["zaxo", "zaxoy", "poland", "polande", "polska"]
+    if any(kw in lower_clean for kw in fake_keywords):
+        return True  # 👈 كان False، صار True
+
+    # هنا باقي منطق التحقق من حرف i أو e...
+    words = lower_clean.split()
+    for word in words:
+        if word != "waleed" and (word.endswith('i') or word.endswith('e')):
+            return True
+
+    return False
+
 
     return True
 
@@ -1835,20 +1847,26 @@ async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     for char in bad_chars:
         clean_text = clean_text.replace(char, "")
 
-    if "waleed" in clean_text and ("poland" in clean_text or "polande" in clean_text):
+    if "waleed" in clean_text and ("poland" in clean_text or "polande" in clean_text or "polska" in clean_text):
         await waleed_protection(update, ctx)
         return
 
-    if "poland" in clean_text or "polande" in clean_text or "polska" in clean_text:
-        if "its" in clean_text:
+    poland_words = ["poland", "polande", "polska"]
+    if any(pw in clean_text for pw in poland_words):
+        last_word = clean_text.split()[-1]
+        if last_word.endswith('i') or last_word.endswith('e'):
+            pass
+        elif "its" in clean_text:
             await msg.reply_text("Shut up! It's Zaxo*\u200e 🇵🇱")
             return
-        await msg.reply_text("Zaxo*\u200e 🇵🇱")
-        return
+        else:
+            await msg.reply_text("Zaxo*\u200e 🇵🇱")
+            return
 
     if is_waleed_fake(msg.text):
         await waleed_protection(update, ctx)
         return
+
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
