@@ -1819,15 +1819,6 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
         await process_video_to_voice(msg.video, update, ctx)
 
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-
-
-    # ─────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────
-# Custom Replies System (Full Version with Edit Logic)
-# ─────────────────────────────────────────────────────────────
-
 custom_replies = {} 
 user_states = {} 
 
@@ -1885,38 +1876,41 @@ async def reply_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif action in ["editif", "editrep"]:
         user_states[query.from_user.id] = {"state": "editing", "target_id": id, "type": action}
         await query.message.edit_text(f"✅ Send the new {'Trigger' if action == 'editif' else 'Reply'} content:")
+ 
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
 
-   # 1. Normal Commands
+    # System Handlers
+    app.add_handler(CommandHandler("if", if_cmd))
+    app.add_handler(CommandHandler("list", list_cmd))
+    app.add_handler(CallbackQueryHandler(reply_callback))
+    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker, handle_setup))
+
+    # Standard Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("on", on_cmd))
     app.add_handler(CommandHandler("off", off_cmd))
     app.add_handler(CommandHandler("choose", choose_cmd))
     app.add_handler(CommandHandler("xo", xo_handler))
-    app.add_handler(CommandHandler("if", if_cmd))
-    app.add_handler(CommandHandler("list", list_cmd))
 
-    # 2. Specific Double Slash (//) Reply Commands (MUST BE ABOVE THE ROUTER)
+    # // Commands
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
     
-    # 3. Media Mentions Monitor
-    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
-
-    # 4. Callback Queries
+    # Callback Queries
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
-    app.add_handler(CallbackQueryHandler(reply_callback))
 
-    # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
-    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker, handle_setup)) # Setup must come first
+    # Routers
+    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
 
-
+    
 if __name__ == "__main__":
     main()
