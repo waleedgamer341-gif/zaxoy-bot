@@ -1886,7 +1886,7 @@ async def reply_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         user_states[query.from_user.id] = {"state": "editing", "target_id": id, "type": action}
         await query.message.edit_text(f"✅ Send the new {'Trigger' if action == 'editif' else 'Reply'} content:")
 
-    # 1. Normal Commands
+   # 1. Normal Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("on", on_cmd))
     app.add_handler(CommandHandler("off", off_cmd))
@@ -1910,9 +1910,9 @@ async def reply_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     app.add_handler(CallbackQueryHandler(reply_callback))
 
     # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
+    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker, handle_setup)) # Setup must come first
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
-    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker, handle_setup))
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
