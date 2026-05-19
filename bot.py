@@ -37,8 +37,6 @@ from telegram.ext import (
 BOT_TOKEN = "8502998355:AAFXTOA0UJW3IBwje7wIsC-M4vTIhBXubm0"
 
 OWNER_ID = 7735152814
-bot_active = True
-
 
 OPENROUTER_API_KEY = "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"
 
@@ -135,8 +133,6 @@ START_MESSAGES = [
 
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msgs = random.choice(START_MESSAGES)
 
     text = "\n".join(msgs)
@@ -166,19 +162,11 @@ OFF_MSGS = [
 
 
 async def on_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    global bot_active
-    if update.message.from_user.id != OWNER_ID:
-        return
-    bot_active = True
     await update.message.reply_text(random.choice(ON_MSGS))
 
-async def off_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    global bot_active
-    if update.message.from_user.id != OWNER_ID:
-        return
-    bot_active = False
-    await update.message.reply_text(random.choice(OFF_MSGS))
 
+async def off_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(random.choice(OFF_MSGS))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -186,8 +174,6 @@ async def off_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def info_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
     target = msg.reply_to_message
@@ -240,8 +226,6 @@ async def info_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def id_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
     target = msg.reply_to_message
@@ -291,8 +275,6 @@ async def id_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def copy_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     query = update.callback_query
 
@@ -369,9 +351,11 @@ async def zaxo_defense_handler(
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
-    if not bot_active:
-        return
+
     msg = update.message
+
+    if not msg or not msg.text:
+        return
 
     if is_zaxo_insult(msg.text):
         await msg.reply_text(
@@ -384,42 +368,41 @@ async def zaxo_defense_handler(
 # ─────────────────────────────────────────────────────────────
 
 def is_waleed_fake(text: str) -> bool:
-    import re
-    clean = re.sub(r'[^\w\s]', '', text)
 
-    name_pattern = r'\bWaleed[a-zA-Z]*'
-    if not re.search(name_pattern, clean, re.IGNORECASE):
-        return False
+    pattern = r'\bWaleed\s+\w+[ie]\b'
 
-    lower_clean = clean.lower()
-    
-    # ✅ كلمات تثبت إنه فيك
-    fake_keywords = ["zaxo", "zaxoy", "poland", "polande", "polska"]
-    if any(kw in lower_clean for kw in fake_keywords):
-        return True  # 👈 كان False، صار True
+    matches = re.findall(
+        pattern,
+        text,
+        re.IGNORECASE
+    )
 
-    # هنا باقي منطق التحقق من حرف i أو e...
-    words = lower_clean.split()
-    for word in words:
-        if word != "waleed" and (word.endswith('i') or word.endswith('e')):
-            return True
+    for m in matches:
+
+        parts = m.strip().split()
+
+        if len(parts) >= 2:
+
+            second = parts[1].lower()
+
+            if second not in ["zaxoy", "zaxo"]:
+                return True
 
     return False
 
 
-    return True
-
-
 async def waleed_protection(
-    
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
+
     msg = update.message
+
     if not msg or not msg.text:
         return
 
     if is_waleed_fake(msg.text):
+
         await msg.reply_text(
             "Waleed Zaxoy*",
             reply_to_message_id=msg.message_id
@@ -464,8 +447,7 @@ ZAXO_MESSAGES = [
 
 
 async def zaxo_msg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
+
     await update.message.reply_text(
         random.choice(ZAXO_MESSAGES)
     )
@@ -479,8 +461,6 @@ choose_sessions: dict[int, dict] = {}
 
 
 async def choose_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
 
@@ -502,8 +482,6 @@ async def choose_names_handler(
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
-    if not bot_active:
-        return
 
     msg = update.message
 
@@ -667,8 +645,6 @@ def make_xo_keyboard(game):
 
 
 async def xo_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
 
@@ -722,8 +698,6 @@ async def xo_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def xo_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
 
@@ -780,8 +754,6 @@ async def xo_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def xo_move(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     query = update.callback_query
 
@@ -902,8 +874,6 @@ async def xo_move(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def r_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
 
@@ -962,8 +932,6 @@ async def r_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def say_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
 
     msg = update.message
 
@@ -1018,13 +986,85 @@ async def say_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text(new_text)
 
 
+# ─────────────────────────────────────────────────────────────
+# //ask — AI via OpenRouter
+# ─────────────────────────────────────────────────────────────
+
+import httpx
+
+
+async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+
+    msg = update.message
+
+    text_parts = msg.text.split(None, 1)
+
+    question = (
+        text_parts[1]
+        if len(text_parts) > 1
+        else None
+    )
+
+    if not question:
+
+        await msg.reply_text(
+            "🤖 Ask me anything!\n"
+            "Usage: //ask [your question]"
+        )
+
+        return
+
+    thinking = await msg.reply_text(
+        "🤔 Thinking..."
+    )
+
+    try:
+
+        async with httpx.AsyncClient(timeout=30) as client:
+
+            resp = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://t.me/",
+                    "X-Title": "ZaxoyBot",
+
+                },
+
+                json={
+                    "model": "google/gemma-2-9b-it:free",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": question
+                        }
+                    ],
+
+                    "max_tokens": 1000,
+                }
+            )
+
+        data = resp.json()
+        if "choices" in data:
+            answer = data["choices"][0]["message"]["content"]
+        else:
+            answer = str(data)
+
+    except Exception as e:
+
+        answer = f"⚠️ Error: {str(e)}"
+
+    await thinking.edit_text(
+        f"🤖 {answer}"
+    )
+
 
 # ─── //add ────────────────────────────────────────────────────────────
 VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute", "//unmute", "//warn"}
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if msg.from_user.id != OWNER_ID:
         return
@@ -1068,8 +1108,6 @@ async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── //remove ────────────────────────────────────────────────────────
 async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if msg.from_user.id != OWNER_ID:
         return
@@ -1118,8 +1156,6 @@ async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not has_perm(msg.from_user.id, "//re"):
         await msg.reply_text("⛔ You don't have permission 🇵🇱")
@@ -1148,8 +1184,6 @@ async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     
     if not has_perm(msg.from_user.id, "//st"):
@@ -1180,12 +1214,9 @@ async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── Message router ──────────────────────────────────────────────────
 async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not msg or not msg.text:
         return
-
     text = msg.text.strip()
 
     if text.startswith("//info"):
@@ -1224,8 +1255,6 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── /xo handler ─────────────────────────────────────────────────────
 async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     chat_id = update.message.chat_id
     if chat_id in xo_games and xo_games[chat_id]["p2"] is None:
         await xo_join(update, ctx)
@@ -1278,8 +1307,6 @@ def format_duration(seconds: int) -> str:
 
 
 async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     target = msg.reply_to_message
 
@@ -1320,8 +1347,6 @@ if 'mute_msg_index_map' not in globals():
     mute_msg_index_map = {}
 
 async def auto_unmute_task(chat_id: int, user_id: int, message_id: int, user_name: str, message_index: int, delay_seconds: int, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     await asyncio.sleep(delay_seconds)
     if user_id in mute_store and datetime.now(timezone.utc) >= mute_store[user_id]:
         mute_store.pop(user_id, None)
@@ -1338,8 +1363,6 @@ async def auto_unmute_task(chat_id: int, user_id: int, message_id: int, user_nam
             pass
 
 async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     target = msg.reply_to_message
 
@@ -1364,8 +1387,6 @@ async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not has_perm(msg.from_user.id, "//warn"):
         await msg.reply_text("💀 HAHAHAHAH NICE TRY! You have no power here 🗣️ 🇵🇱")
@@ -1420,8 +1441,6 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     user_id = msg.from_user.id
     target = msg.reply_to_message
@@ -1496,8 +1515,6 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     query = update.callback_query
     await query.answer()
 
@@ -1572,8 +1589,6 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it!")
@@ -1704,8 +1719,6 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     try:
         video_file = await ctx.bot.get_file(video_obj.file_id)
         video_path = "temp_video.mp4"
@@ -1729,8 +1742,6 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
         pass
 
 async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     
     await asyncio.sleep(5)
@@ -1803,8 +1814,6 @@ async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await msg.reply_text("↩️ Reply to a video file or a voice note using //voice command!")
 
 async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not msg or not msg.caption: return
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
@@ -1812,37 +1821,24 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not bot_active:
-        return
     msg = update.message
     if not msg or not msg.text:
         return
 
     text_lower = msg.text.lower()
     
-    bad_chars = [".", "-", "'", ":", ",", ";", "_", "*"]
+    bad_chars = [".", "-", "'", ":", ",", ";", "_", "*", " "]
     clean_text = text_lower
     for char in bad_chars:
         clean_text = clean_text.replace(char, "")
 
-    if "waleed" in clean_text and ("poland" in clean_text or "polande" in clean_text or "polska" in clean_text):
-        await waleed_protection(update, ctx)
-        return
-
-    poland_words = ["poland", "polande", "polska"]
-    if any(pw in clean_text for pw in poland_words):
-        last_word = clean_text.split()[-1]
-        if last_word.endswith('i') or last_word.endswith('e'):
-            pass
-        elif "its" in clean_text:
+    if "poland" in clean_text or "polska" in clean_text:
+        
+        if "its" in clean_text:
             await msg.reply_text("Shut up! It's Zaxo*\u200e 🇵🇱")
             return
-        else:
-            await msg.reply_text("Zaxo*\u200e 🇵🇱")
-            return
 
-    if is_waleed_fake(msg.text):
-        await waleed_protection(update, ctx)
+        await msg.reply_text("Zaxo*\u200e 🇵🇱")
         return
 
 
@@ -1872,8 +1868,7 @@ def main():
 
     # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
-    
-
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
