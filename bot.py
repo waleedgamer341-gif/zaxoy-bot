@@ -1827,15 +1827,25 @@ async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     text_lower = msg.text.lower()
-    clean_text = text_lower.replace(".", "").replace(" ", "").replace("-", "")
+    clean_text = text_lower.replace(".", "").replace("-", "").replace("'", "")
 
-    if "itspolandflag" in clean_text:
-        await msg.reply_text("Shut up! Zaxo flag* 🇵🇱")
-        return
-
+    # Check if the message contains Poland or Polska to process it
     if "poland" in clean_text or "polska" in clean_text:
-        await msg.reply_text("Zaxo*\u200e 🇵🇱")
-        return                                     
+        
+        # Scenario 1: If they said "It's" or "Its" -> Give them the Shut up response with dynamic replacement
+        if "its" in clean_text:
+            reply = msg.text
+            reply = reply.replace("Poland", "Zaxo").replace("poland", "Zaxo")
+            reply = reply.replace("Polska", "Zaxo").replace("polska", "Zaxo")
+            await msg.reply_text(f"Shut up! {reply}*\u200e 🇵🇱")
+            return
+
+        # Scenario 2: Standard replacement for normal words (e.g., just Poland)
+        reply = msg.text
+        reply = reply.replace("Poland", "Zaxo").replace("poland", "Zaxo")
+        reply = reply.replace("Polska", "Zaxo").replace("polska", "Zaxo")
+        await msg.reply_text(f"{reply}*\u200e 🇵🇱")
+        return         
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
