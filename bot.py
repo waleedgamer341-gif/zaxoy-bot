@@ -1884,7 +1884,7 @@ def main():
     app.add_handler(CommandHandler("if", if_cmd))
     app.add_handler(CommandHandler("list", list_cmd))
     app.add_handler(CallbackQueryHandler(reply_callback))
-    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker, handle_setup))
+    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker.ALL, handle_setup))
 
     # Standard Commands
     app.add_handler(CommandHandler("start", start))
