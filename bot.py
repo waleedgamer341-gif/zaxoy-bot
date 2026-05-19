@@ -366,16 +366,12 @@ def is_zaxo_insult(text: str) -> bool:
 
 
 async def zaxo_defense_handler(
-    if not bot_active:
-        return
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
-    
-    msg = update.message
-
-    if not msg or not msg.text:
+    if not bot_active:
         return
+    msg = update.message
 
     if is_zaxo_insult(msg.text):
         await msg.reply_text(
@@ -415,8 +411,7 @@ def is_waleed_fake(text: str) -> bool:
 
 
 async def waleed_protection(
-    if not bot_active:
-        return
+    
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
