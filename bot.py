@@ -2060,10 +2060,6 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
-    app.add_handler(MessageHandler(
-        filters.ChatType.PRIVATE & (filters.TEXT | filters.Sticker()) & filters.User(OWNER_ID),
-        if_session_handler
-    ))
 
     # 3. Media Mentions Monitor
     app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
@@ -2084,11 +2080,5 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
 
-
-
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
