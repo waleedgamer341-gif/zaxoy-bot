@@ -371,9 +371,7 @@ async def zaxo_defense_handler(
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
-    if not bot_active:
-        return
-
+    
     msg = update.message
 
     if not msg or not msg.text:
