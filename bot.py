@@ -135,6 +135,8 @@ START_MESSAGES = [
 
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+    return
     msgs = random.choice(START_MESSAGES)
 
     text = "\n".join(msgs)
@@ -1894,7 +1896,8 @@ def main():
 
     # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
+    
+
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
