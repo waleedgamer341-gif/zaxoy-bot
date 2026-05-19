@@ -1820,32 +1820,27 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await process_video_to_voice(msg.video, update, ctx)
 
 
-
 async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not msg or not msg.text:
         return
 
     text_lower = msg.text.lower()
-    clean_text = text_lower.replace(".", "").replace("-", "").replace("'", "")
+    
+    bad_chars = [".", "-", "'", ":", ",", ";", "_", "*", " "]
+    clean_text = text_lower
+    for char in bad_chars:
+        clean_text = clean_text.replace(char, "")
 
-    # Check if the message contains Poland or Polska to process it
     if "poland" in clean_text or "polska" in clean_text:
         
-        # Scenario 1: If they said "It's" or "Its" -> Give them the Shut up response with dynamic replacement
         if "its" in clean_text:
-            reply = msg.text
-            reply = reply.replace("Poland", "Zaxo").replace("poland", "Zaxo")
-            reply = reply.replace("Polska", "Zaxo").replace("polska", "Zaxo")
-            await msg.reply_text(f"Shut up! {reply}*\u200e 🇵🇱")
+            await msg.reply_text("Shut up! It's Zaxo*\u200e 🇵🇱")
             return
 
-        # Scenario 2: Standard replacement for normal words (e.g., just Poland)
-        reply = msg.text
-        reply = reply.replace("Poland", "Zaxo").replace("poland", "Zaxo")
-        reply = reply.replace("Polska", "Zaxo").replace("polska", "Zaxo")
-        await msg.reply_text(f"{reply}*\u200e 🇵🇱")
-        return         
+        await msg.reply_text("Zaxo*\u200e 🇵🇱")
+        return
+
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
