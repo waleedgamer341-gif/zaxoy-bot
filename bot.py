@@ -2077,6 +2077,10 @@ def main():
 
     # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//if"), if_cmd))
+    app.add_handler(MessageHandler(
+        filters.ChatType.PRIVATE & (filters.TEXT | filters.Sticker()) & filters.User(OWNER_ID),
+        if_session_handler
+    ))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
 
