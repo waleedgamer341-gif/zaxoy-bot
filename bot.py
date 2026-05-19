@@ -2060,25 +2060,26 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//if"), if_cmd))  # ← هنا
     app.add_handler(MessageHandler(
         filters.ChatType.PRIVATE & (filters.TEXT | filters.Sticker()) & filters.User(OWNER_ID),
         if_session_handler
-    ))  # ← هنا
+    ))
 
     # 3. Media Mentions Monitor
     app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
-    app.add_handler(MessageHandler(filters.Sticker(), if_auto_responder))  # ← هنا
+    app.add_handler(MessageHandler(filters.Sticker(), if_auto_responder))
 
     # 4. Callback Queries
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
-    app.add_handler(CallbackQueryHandler(if_callback, pattern="^(ifdel_|ifedit_|ifedittrigger_|ifeditreply_)"))  # ← هنا
+    app.add_handler(CallbackQueryHandler(if_callback, pattern="^(ifdel_|ifedit_|ifedittrigger_|ifeditreply_)"))
 
     # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//if"), if_cmd))
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
+
 
 
     print("Zaxoy Bot started 🇵🇱")
