@@ -1819,98 +1819,36 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
         await process_video_to_voice(msg.video, update, ctx)
 
-custom_replies = {} 
-user_states = {} 
-
-async def if_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != OWNER_ID or update.message.chat.type != 'private': return
-    user_states[update.message.from_user.id] = {"state": "waiting_trigger"}
-    await update.message.reply_text("✅ Please send the text or sticker you want to be the trigger (IF).")
-
-async def handle_setup(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if user_id not in user_states or update.message.chat.type != 'private': return
-    
-    state = user_states[user_id].get("state")
-    if state == "waiting_trigger":
-        trigger_data = {"text": update.message.text, "sticker": update.message.sticker.file_id if update.message.sticker else None}
-        user_states[user_id] = {"state": "waiting_reply", "trigger_data": trigger_data}
-        await update.message.reply_text("✅ Now send the reply (text or sticker).")
-    
-    elif state == "waiting_reply":
-        trigger = user_states[user_id]["trigger_data"]
-        reply_data = {"text": update.message.text, "sticker": update.message.sticker.file_id if update.message.sticker else None}
-        custom_replies[str(len(custom_replies) + 1)] = {"trigger": trigger, "reply": reply_data}
-        user_states.pop(user_id)
-        await update.message.reply_text("✅ Saved successfully! 🇵🇱")
-
-    elif state == "editing":
-        target_id = user_states[user_id]["target_id"]
-        edit_type = user_states[user_id]["type"]
-        content = {"text": update.message.text, "sticker": update.message.sticker.file_id if update.message.sticker else None}
-        if edit_type == "editif": custom_replies[target_id]["trigger"] = content
-        else: custom_replies[target_id]["reply"] = content
-        user_states.pop(user_id)
-        await update.message.reply_text("✅ Updated successfully!")
-
-async def list_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != OWNER_ID or update.message.chat.type != 'private': return
-    if not custom_replies: await update.message.reply_text("List is empty."); return
-    for id, data in custom_replies.items():
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("Edit", callback_data=f"edit_{id}"), InlineKeyboardButton("Delete", callback_data=f"del_{id}")]])
-        trigger_info = data['trigger']['text'] or "Sticker"
-        await update.message.reply_text(f"ID: {id}\nIF: {trigger_info}", reply_markup=kb)
-
-async def reply_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if query.from_user.id != OWNER_ID: return
-    action, id = query.data.split("_")
-    
-    if action == "del":
-        custom_replies.pop(id, None)
-        await query.answer("Deleted!")
-        await query.message.delete()
-    elif action == "edit":
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("Edit IF", callback_data=f"editif_{id}"), InlineKeyboardButton("Edit Reply", callback_data=f"editrep_{id}")]])
-        await query.message.edit_text(f"Editing ID: {id}. Choose what to change:", reply_markup=kb)
-    elif action in ["editif", "editrep"]:
-        user_states[query.from_user.id] = {"state": "editing", "target_id": id, "type": action}
-        await query.message.edit_text(f"✅ Send the new {'Trigger' if action == 'editif' else 'Reply'} content:")
- 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # System Handlers
-    app.add_handler(CommandHandler("if", if_cmd))
-    app.add_handler(CommandHandler("list", list_cmd))
-    app.add_handler(CallbackQueryHandler(reply_callback))
-    app.add_handler(MessageHandler(filters.TEXT | filters.Sticker.ALL, handle_setup))
-
-    # Standard Commands
+    # 1. Normal Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("on", on_cmd))
     app.add_handler(CommandHandler("off", off_cmd))
     app.add_handler(CommandHandler("choose", choose_cmd))
     app.add_handler(CommandHandler("xo", xo_handler))
 
-    # // Commands
+    # 2. Specific Double Slash (//) Reply Commands (MUST BE ABOVE THE ROUTER)
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//warn\b"), warn_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//shot\b"), shot_cmd))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^//voice\b"), voice_cmd))
     
-    # Callback Queries
+    # 3. Media Mentions Monitor
+    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
+
+    # 4. Callback Queries
     app.add_handler(CallbackQueryHandler(copy_callback, pattern="^copy_"))
     app.add_handler(CallbackQueryHandler(unmute_button, pattern="^(unmute_|remwarn_|resetwarn_)"))
     app.add_handler(CallbackQueryHandler(xo_move, pattern="^xo_"))
 
-    # Routers
-    app.add_handler(MessageHandler(filters.VIDEO & filters.CaptionEntity("mention"), monitor_mentions))
+    # 5. General Message Routers (MUST BE AT THE VERY BOTTOM)
     app.add_handler(MessageHandler(filters.Regex(r"^//"), message_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
 
     print("Zaxoy Bot started 🇵🇱")
     app.run_polling()
 
-    
+
 if __name__ == "__main__":
     main()
