@@ -380,27 +380,9 @@ async def zaxo_defense_handler(
 # ─────────────────────────────────────────────────────────────
 
 def is_waleed_fake(text: str) -> bool:
-
-    pattern = r'\bWaleed\s+\w+[ie]\b'
-
-    matches = re.findall(
-        pattern,
-        text,
-        re.IGNORECASE
-    )
-
-    for m in matches:
-
-        parts = m.strip().split()
-
-        if len(parts) >= 2:
-
-            second = parts[1].lower()
-
-            if second not in ["zaxoy", "zaxo"]:
-                return True
-
-    return False
+    pattern = r'\bWaleed\s*[\s\W]*(?!Zaxoy?\b)\w+\b'
+    matches = re.findall(pattern, text, re.IGNORECASE)
+    return len(matches) > 0
 
 
 async def waleed_protection(
