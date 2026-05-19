@@ -1817,7 +1817,9 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not msg or not msg.caption: return
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
-        await process_video_to_voice(msg.video, update, ctx)
+        await process_video_to_voice(msg.video, update, 
+
+
 
 async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -1825,22 +1827,15 @@ async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     text_lower = msg.text.lower()
+    clean_text = text_lower.replace(".", "").replace(" ", "").replace("-", "")
 
-    # 1. Match: it's poland flag / its poland flag
-    if "it's poland flag" in text_lower or "its poland flag" in text_lower:
-        await msg.reply_text("Zaxo flag* 🇵🇱")
+    if "itspolandflag" in clean_text:
+        await msg.reply_text("Shut up! Zaxo flag* 🇵🇱")
         return
 
-    # 2. Match: poland is not zaxo
-    if "not zaxo" in text_lower or "is not zaxo" in text_lower:
-        await msg.reply_text("Shut up! Poland is Zaxo and Zaxo is Poland. 🤫🇵🇱")
-        return
-
-    # 3. Match: poland / polska
-    if "poland" in text_lower or "polska" in text_lower:
-        await msg.reply_text("🇵🇱 *Zaxo")
-        return
-
+    if "poland" in clean_text or "polska" in clean_text:
+        await msg.reply_text("Zaxo*\u200e 🇵🇱")
+        return                                     
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
