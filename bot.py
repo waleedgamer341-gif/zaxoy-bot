@@ -1817,7 +1817,7 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not msg or not msg.caption: return
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
-        await process_video_to_voice(msg.video, update, 
+        await process_video_to_voice(msg.video, update, ctx)
 
 
 
