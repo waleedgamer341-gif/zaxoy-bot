@@ -37,6 +37,8 @@ from telegram.ext import (
 BOT_TOKEN = "8502998355:AAFXTOA0UJW3IBwje7wIsC-M4vTIhBXubm0"
 
 OWNER_ID = 7735152814
+bot_active = True
+
 
 OPENROUTER_API_KEY = "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"
 
@@ -162,11 +164,19 @@ OFF_MSGS = [
 
 
 async def on_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    global bot_active
+    if update.message.from_user.id != OWNER_ID:
+        return
+    bot_active = True
     await update.message.reply_text(random.choice(ON_MSGS))
 
-
 async def off_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    global bot_active
+    if update.message.from_user.id != OWNER_ID:
+        return
+    bot_active = False
     await update.message.reply_text(random.choice(OFF_MSGS))
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -351,6 +361,8 @@ async def zaxo_defense_handler(
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
+    if not bot_active:
+        return
 
     msg = update.message
 
@@ -1214,9 +1226,12 @@ async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── Message router ──────────────────────────────────────────────────
 async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not msg or not msg.text:
         return
+
     text = msg.text.strip()
 
     if text.startswith("//info"):
@@ -1821,9 +1836,12 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not msg or not msg.text:
         return
+
 
     text_lower = msg.text.lower()
     
