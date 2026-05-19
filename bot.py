@@ -186,6 +186,8 @@ async def off_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def info_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
     target = msg.reply_to_message
@@ -238,6 +240,8 @@ async def info_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def id_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
     target = msg.reply_to_message
@@ -287,6 +291,8 @@ async def id_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def copy_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     query = update.callback_query
 
@@ -360,6 +366,8 @@ def is_zaxo_insult(text: str) -> bool:
 
 
 async def zaxo_defense_handler(
+    if not bot_active:
+        return
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
@@ -409,6 +417,8 @@ def is_waleed_fake(text: str) -> bool:
 
 
 async def waleed_protection(
+    if not bot_active:
+        return
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
@@ -461,7 +471,8 @@ ZAXO_MESSAGES = [
 
 
 async def zaxo_msg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-
+    if not bot_active:
+        return
     await update.message.reply_text(
         random.choice(ZAXO_MESSAGES)
     )
@@ -475,6 +486,8 @@ choose_sessions: dict[int, dict] = {}
 
 
 async def choose_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
 
@@ -493,6 +506,8 @@ async def choose_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def choose_names_handler(
+    if not bot_active:
+        return
     update: Update,
     ctx: ContextTypes.DEFAULT_TYPE
 ):
@@ -659,6 +674,8 @@ def make_xo_keyboard(game):
 
 
 async def xo_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
 
@@ -712,6 +729,8 @@ async def xo_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def xo_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
 
@@ -768,6 +787,8 @@ async def xo_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def xo_move(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     query = update.callback_query
 
@@ -888,6 +909,8 @@ async def xo_move(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def r_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
 
@@ -946,6 +969,8 @@ async def r_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────
 
 async def say_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
 
     msg = update.message
 
@@ -1000,85 +1025,13 @@ async def say_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text(new_text)
 
 
-# ─────────────────────────────────────────────────────────────
-# //ask — AI via OpenRouter
-# ─────────────────────────────────────────────────────────────
-
-import httpx
-
-
-async def ask_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-
-    msg = update.message
-
-    text_parts = msg.text.split(None, 1)
-
-    question = (
-        text_parts[1]
-        if len(text_parts) > 1
-        else None
-    )
-
-    if not question:
-
-        await msg.reply_text(
-            "🤖 Ask me anything!\n"
-            "Usage: //ask [your question]"
-        )
-
-        return
-
-    thinking = await msg.reply_text(
-        "🤔 Thinking..."
-    )
-
-    try:
-
-        async with httpx.AsyncClient(timeout=30) as client:
-
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://t.me/",
-                    "X-Title": "ZaxoyBot",
-
-                },
-
-                json={
-                    "model": "google/gemma-2-9b-it:free",
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": question
-                        }
-                    ],
-
-                    "max_tokens": 1000,
-                }
-            )
-
-        data = resp.json()
-        if "choices" in data:
-            answer = data["choices"][0]["message"]["content"]
-        else:
-            answer = str(data)
-
-    except Exception as e:
-
-        answer = f"⚠️ Error: {str(e)}"
-
-    await thinking.edit_text(
-        f"🤖 {answer}"
-    )
-
 
 # ─── //add ────────────────────────────────────────────────────────────
 VALID_CMDS = {"//info", "//id", "//r", "//ask", "//zaxo", "//say", "//st", "//re", "//mute", "//unmute", "//warn"}
 
 async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if msg.from_user.id != OWNER_ID:
         return
@@ -1122,6 +1075,8 @@ async def add_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── //remove ────────────────────────────────────────────────────────
 async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if msg.from_user.id != OWNER_ID:
         return
@@ -1170,6 +1125,8 @@ async def remove_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not has_perm(msg.from_user.id, "//re"):
         await msg.reply_text("⛔ You don't have permission 🇵🇱")
@@ -1198,6 +1155,8 @@ async def react_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def sticker_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     
     if not has_perm(msg.from_user.id, "//st"):
@@ -1272,6 +1231,8 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ─── /xo handler ─────────────────────────────────────────────────────
 async def xo_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     chat_id = update.message.chat_id
     if chat_id in xo_games and xo_games[chat_id]["p2"] is None:
         await xo_join(update, ctx)
@@ -1324,6 +1285,8 @@ def format_duration(seconds: int) -> str:
 
 
 async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     target = msg.reply_to_message
 
@@ -1364,6 +1327,8 @@ if 'mute_msg_index_map' not in globals():
     mute_msg_index_map = {}
 
 async def auto_unmute_task(chat_id: int, user_id: int, message_id: int, user_name: str, message_index: int, delay_seconds: int, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     await asyncio.sleep(delay_seconds)
     if user_id in mute_store and datetime.now(timezone.utc) >= mute_store[user_id]:
         mute_store.pop(user_id, None)
@@ -1380,6 +1345,8 @@ async def auto_unmute_task(chat_id: int, user_id: int, message_id: int, user_nam
             pass
 
 async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     target = msg.reply_to_message
 
@@ -1404,6 +1371,8 @@ async def mute_status_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not has_perm(msg.from_user.id, "//warn"):
         await msg.reply_text("💀 HAHAHAHAH NICE TRY! You have no power here 🗣️ 🇵🇱")
@@ -1458,6 +1427,8 @@ async def warn_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     user_id = msg.from_user.id
     target = msg.reply_to_message
@@ -1532,6 +1503,8 @@ async def mute_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     query = update.callback_query
     await query.answer()
 
@@ -1606,6 +1579,8 @@ async def unmute_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not msg.reply_to_message:
         await msg.reply_text("↩️ Reply to any message with //shot to capture it!")
@@ -1736,6 +1711,8 @@ async def shot_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     try:
         video_file = await ctx.bot.get_file(video_obj.file_id)
         video_path = "temp_video.mp4"
@@ -1759,6 +1736,8 @@ async def process_video_to_voice(video_obj, update: Update, ctx: ContextTypes.DE
         pass
 
 async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     
     await asyncio.sleep(5)
@@ -1831,6 +1810,8 @@ async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await msg.reply_text("↩️ Reply to a video file or a voice note using //voice command!")
 
 async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not msg or not msg.caption: return
     if f"@{ctx.bot.username}" in msg.caption and msg.video:
@@ -1838,6 +1819,8 @@ async def monitor_mentions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_group_words(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not bot_active:
+        return
     msg = update.message
     if not msg or not msg.text:
         return
