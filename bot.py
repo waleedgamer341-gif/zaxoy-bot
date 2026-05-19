@@ -1213,6 +1213,10 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await mute_cmd(update, ctx)
     elif text.startswith("//unmute"):
         await unmute_cmd(update, ctx)
+    elif text.startswith("//voice"):
+        await voice_cmd(update, ctx)
+    elif text.startswith("//shot"):
+        await shot_cmd(update, ctx)
     else:
         await zaxo_defense_handler(update, ctx)
         await waleed_protection(update, ctx)
@@ -1732,7 +1736,12 @@ async def voice_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     msg = update.message
     
-
+    await asyncio.sleep(5)
+    try:
+        await msg.delete()
+    except Exception:
+        pass
+        
     if msg.reply_to_message:
         target = msg.reply_to_message
         
