@@ -1245,8 +1245,11 @@ async def message_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await mute_cmd(update, ctx)
     elif text.startswith("//unmute"):
         await unmute_cmd(update, ctx)
+    elif text.startswith("//if"):
+        await if_cmd(update, ctx)
     else:
         await zaxo_defense_handler(update, ctx)
+
         await waleed_protection(update, ctx)
         session = choose_sessions.get(msg.chat_id)
         if session and session.get("step") == "waiting":
